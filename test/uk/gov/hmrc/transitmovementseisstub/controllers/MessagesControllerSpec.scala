@@ -18,20 +18,22 @@ package uk.gov.hmrc.transitmovementseisstub.controllers
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.http.Status
-import play.api.test.Helpers._
+import play.api.http.Status.ACCEPTED
+import play.api.http.Status.OK
 import play.api.test.FakeRequest
-import play.api.test.Helpers
+import play.api.test.Helpers.defaultAwaitTimeout
+import play.api.test.Helpers.status
+import play.api.test.Helpers.stubControllerComponents
 
-class MicroserviceHelloWorldControllerSpec extends AnyWordSpec with Matchers {
+class MessagesControllerSpec extends AnyWordSpec with Matchers {
 
-  private val fakeRequest = FakeRequest("GET", "/")
-  private val controller  = new MicroserviceHelloWorldController(Helpers.stubControllerComponents())
+  private val fakeRequest = FakeRequest("POST", routes.MessagesController.post.url)
+  private val controller  = new MessagesController(stubControllerComponents())
 
-  "GET /" should {
-    "return 200" in {
-      val result = controller.hello()(fakeRequest)
-      status(result) shouldBe Status.OK
+  "POST /" should {
+    "return 202" in {
+      val result = controller.post()(fakeRequest)
+      status(result) shouldBe ACCEPTED
     }
   }
 }
