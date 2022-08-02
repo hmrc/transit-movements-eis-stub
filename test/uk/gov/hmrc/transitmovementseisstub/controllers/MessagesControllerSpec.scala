@@ -24,8 +24,9 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.Helpers.status
 import play.api.test.Helpers.stubControllerComponents
+import uk.gov.hmrc.transitmovementseisstub.base.TestActorSystem
 
-class MessagesControllerSpec extends AnyWordSpec with Matchers {
+class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSystem {
 
   private val fakeRequest = FakeRequest("POST", routes.MessagesController.post.url)
   private val controller  = new MessagesController(stubControllerComponents())

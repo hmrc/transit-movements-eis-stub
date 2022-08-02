@@ -16,18 +16,24 @@
 
 package uk.gov.hmrc.transitmovementseisstub.controllers
 
+import akka.stream.Materializer
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import play.api.libs.streams.Accumulator
 import play.api.mvc.Action
-import play.api.mvc.AnyContent
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Request
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
 
 import javax.inject.Inject
 
-class MessagesController @Inject() (cc: ControllerComponents) extends BackendController(cc) {
+class MessagesController @Inject() (cc: ControllerComponents)(implicit val materializer: Materializer) extends BackendController(cc) with StreamingParsers {
 
-  def post(): Action[AnyContent] = Action {
-    _: Request[AnyContent] =>
+  def post(): Action[Source[ByteString, _]] = Action(streamFromMemory) {
+    request: Request[Source[ByteString, _]] =>
+      request.body.runWith(Sink.ignore)
       Accepted
   }
 }
