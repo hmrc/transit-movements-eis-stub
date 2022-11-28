@@ -20,9 +20,9 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import play.api.libs.streams.Accumulator
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
+import play.api.mvc.Headers
 import play.api.mvc.Request
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
@@ -31,9 +31,46 @@ import javax.inject.Inject
 
 class MessagesController @Inject() (cc: ControllerComponents)(implicit val materializer: Materializer) extends BackendController(cc) with StreamingParsers {
 
-  def post(): Action[Source[ByteString, _]] = Action(streamFromMemory) {
+  def channelResponseGB(): Action[Source[ByteString, _]] = Action(streamFromMemory) {
     request: Request[Source[ByteString, _]] =>
       request.body.runWith(Sink.ignore)
-      Accepted
+
+      validateHeaders(request.headers, "gb") match {
+        case true => Ok
+        case _    => BadRequest
+      }
   }
+
+  def channelResponseXI(): Action[Source[ByteString, _]] = Action(streamFromMemory) {
+    request: Request[Source[ByteString, _]] =>
+      request.body.runWith(Sink.ignore)
+
+      validateHeaders(request.headers, "xi") match {
+        case true => Ok
+        case _    => BadRequest
+      }
+  }
+
+  def validateHeaders(headers: Headers, officeCode: String): Boolean = {
+    var result = isHeaderExists("content-type", headers) &&
+      isHeaderExists("accept", headers) &&
+      headers.get("authorization").nonEmpty &&
+      headers.get("correlation-id").nonEmpty &&
+      headers.get("x-message-type").nonEmpty &&
+      headers.get("x-correlation-id").nonEmpty &&
+      headers.get("date").nonEmpty
+
+    if (officeCode.equals("xi")) {
+      result = headers.get("x-conversation-id").nonEmpty
+    }
+
+    result
+  }
+
+  def isHeaderExists(headerName: String, headers: Headers) =
+    headers.get(headerName) match {
+      case Some("application/xml") => true
+      case _                       => false
+    }
+
 }

@@ -1,3 +1,5 @@
 # microservice specific routes
 
-POST        /movements/messages     uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.post
+POST        /ncts/trader/channelresponsegb/v2     uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.channelResponseGB
+
+POST        /ncts/trader/channelresponsexi/v1     uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.channelResponseXI
