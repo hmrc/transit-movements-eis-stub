@@ -55,7 +55,6 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
     var result = isHeaderExists("content-type", headers) &&
       isHeaderExists("accept", headers) &&
       headers.get("authorization").nonEmpty &&
-      headers.get("correlation-id").nonEmpty &&
       headers.get("x-message-type").nonEmpty &&
       headers.get("x-correlation-id").nonEmpty &&
       headers.get("date").nonEmpty
