@@ -24,6 +24,7 @@ import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Headers
 import play.api.mvc.Request
+import play.api.mvc.Results
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
 
@@ -37,7 +38,7 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
 
       validateHeaders(request.headers, "gb") match {
         case true => Ok
-        case _    => BadRequest
+        case _    => Results.BadRequest("Headers are missing")
       }
   }
 
@@ -47,7 +48,7 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
 
       validateHeaders(request.headers, "xi") match {
         case true => Ok
-        case _    => BadRequest
+        case _    => Results.BadRequest("Headers are missing")
       }
   }
 
