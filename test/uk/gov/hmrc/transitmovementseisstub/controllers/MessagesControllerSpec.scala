@@ -88,7 +88,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
     }
     "return 400 - given headers missing" in {
       fakeRequestXI = FakeRequest("POST", routes.MessagesController.channelResponseXI.url)
-      val result = controller.channelResponseGB()(fakeRequestXI)
+      val result = controller.channelResponseXI()(fakeRequestXI)
       status(result) shouldBe BAD_REQUEST
       contentAsJson(result) shouldBe JsString(
         "Expected but did not receive the following headers: content-type, accept, authorization, x-message-type, x-correlation-id, date"

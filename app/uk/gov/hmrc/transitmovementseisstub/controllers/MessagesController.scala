@@ -39,8 +39,9 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
       request.body.runWith(Sink.ignore)
 
       validateHeaders(request.headers, "gb") match {
-        case Right(_)             => Ok
-        case Left(missingHeaders) => Results.BadRequest(JsString(s"Expected but did not receive the following headers: ${missingHeaders.mkString(", ")}"))
+        case Right(_) => Ok
+        case Left(missingHeaders) =>
+          Results.BadRequest(JsString(s"Expected but did not receive the following headers: ${missingHeaders.mkString(", ")}"))
       }
   }
 
@@ -49,8 +50,9 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
       request.body.runWith(Sink.ignore)
 
       validateHeaders(request.headers, "xi") match {
-        case Right(_)             => Ok
-        case Left(missingHeaders) => Results.BadRequest(JsString(s"Expected but did not receive the following headers: ${missingHeaders.mkString(", ")}"))
+        case Right(_) => Ok
+        case Left(missingHeaders) =>
+          Results.BadRequest(JsString(s"Expected but did not receive the following headers: ${missingHeaders.mkString(", ")}"))
       }
   }
 
