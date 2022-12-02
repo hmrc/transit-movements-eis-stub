@@ -20,9 +20,11 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.Status.OK
 import play.api.http.Status.BAD_REQUEST
+import play.api.libs.json.JsString
 import play.api.mvc.AnyContentAsEmpty
 import play.api.test.FakeHeaders
 import play.api.test.FakeRequest
+import play.api.test.Helpers.contentAsJson
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.Helpers.status
 import play.api.test.Helpers.stubControllerComponents
@@ -73,6 +75,9 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
       fakeRequestGB = FakeRequest("POST", routes.MessagesController.channelResponseGB.url)
       val result = controller.channelResponseGB()(fakeRequestGB)
       status(result) shouldBe BAD_REQUEST
+      contentAsJson(result) shouldBe JsString(
+        "Expected but did not receive the following headers: content-type, accept, authorization, x-message-type, x-correlation-id, date"
+      )
     }
   }
 
@@ -85,6 +90,9 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
       fakeRequestXI = FakeRequest("POST", routes.MessagesController.channelResponseXI.url)
       val result = controller.channelResponseGB()(fakeRequestXI)
       status(result) shouldBe BAD_REQUEST
+      contentAsJson(result) shouldBe JsString(
+        "Expected but did not receive the following headers: content-type, accept, authorization, x-message-type, x-correlation-id, date"
+      )
     }
   }
 }

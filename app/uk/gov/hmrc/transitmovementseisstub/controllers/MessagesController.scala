@@ -20,6 +20,8 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import play.api.http.MimeTypes
+import play.api.libs.json.JsString
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Headers
@@ -37,8 +39,8 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
       request.body.runWith(Sink.ignore)
 
       validateHeaders(request.headers, "gb") match {
-        case true => Ok
-        case _    => Results.BadRequest("Headers are missing")
+        case Right(_)             => Ok
+        case Left(missingHeaders) => Results.BadRequest(JsString(s"Expected but did not receive the following headers: ${missingHeaders.mkString(", ")}"))
       }
   }
 
@@ -47,30 +49,24 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
       request.body.runWith(Sink.ignore)
 
       validateHeaders(request.headers, "xi") match {
-        case true => Ok
-        case _    => Results.BadRequest("Headers are missing")
+        case Right(_)             => Ok
+        case Left(missingHeaders) => Results.BadRequest(JsString(s"Expected but did not receive the following headers: ${missingHeaders.mkString(", ")}"))
       }
   }
 
-  def validateHeaders(headers: Headers, officeCode: String): Boolean = {
-    var result = isHeaderExists("content-type", headers) &&
-      isHeaderExists("accept", headers) &&
-      headers.get("authorization").nonEmpty &&
-      headers.get("x-message-type").nonEmpty &&
-      headers.get("x-correlation-id").nonEmpty &&
-      headers.get("date").nonEmpty
+  def validateHeaders(headers: Headers, officeCode: String): Either[Seq[String], Unit] = {
+    val mandatoryHeaders = Seq("content-type", "accept", "authorization", "x-message-type", "x-correlation-id", "date", "x-conversation-id")
 
-    if (officeCode.equals("xi")) {
-      result = headers.get("x-conversation-id").nonEmpty
+    val missingHeaders = mandatoryHeaders.filter {
+      header =>
+        header match {
+          case header if header == "content-type" || header == "accept" => !headers.get(header).contains(MimeTypes.XML)
+          case "x-conversation-id"                                      => if (officeCode.equals("xi")) headers.get("x-conversation-id").isEmpty else false
+          case _                                                        => headers.get(header).isEmpty
+        }
     }
 
-    result
+    if (missingHeaders.isEmpty) Right(()) else Left(missingHeaders)
   }
-
-  def isHeaderExists(headerName: String, headers: Headers) =
-    headers.get(headerName) match {
-      case Some("application/xml") => true
-      case _                       => false
-    }
 
 }
