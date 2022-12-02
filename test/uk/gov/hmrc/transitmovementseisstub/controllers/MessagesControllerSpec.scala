@@ -91,7 +91,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
       val result = controller.channelResponseXI()(fakeRequestXI)
       status(result) shouldBe BAD_REQUEST
       contentAsJson(result) shouldBe JsString(
-        "Expected but did not receive the following headers: content-type, accept, authorization, x-message-type, x-correlation-id, date"
+        "Expected but did not receive the following headers: content-type, accept, authorization, x-message-type, x-correlation-id, date, x-conversation-id"
       )
     }
   }
