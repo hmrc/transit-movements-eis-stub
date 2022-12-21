@@ -19,7 +19,6 @@ package uk.gov.hmrc.transitmovementseisstub.controllers
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.Status.ACCEPTED
-import play.api.http.Status.OK
 import play.api.test.FakeRequest
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.Helpers.status
