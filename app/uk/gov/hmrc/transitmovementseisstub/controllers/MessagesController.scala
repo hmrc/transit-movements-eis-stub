@@ -33,6 +33,6 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
   def post(): Action[Source[ByteString, _]] = Action(streamFromMemory) {
     request: Request[Source[ByteString, _]] =>
       request.body.runWith(Sink.ignore)
-      Accepted
+      Ok
   }
 }

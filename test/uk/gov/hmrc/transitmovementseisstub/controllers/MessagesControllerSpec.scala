@@ -16,9 +16,9 @@
 
 package uk.gov.hmrc.transitmovementseisstub.controllers
 
+import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.http.Status.ACCEPTED
 import play.api.test.FakeRequest
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.Helpers.status
@@ -31,9 +31,9 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
   private val controller  = new MessagesController(stubControllerComponents())
 
   "POST /" should {
-    "return 202" in {
+    "return 200" in {
       val result = controller.post()(fakeRequest)
-      status(result) shouldBe ACCEPTED
+      status(result) shouldBe Ok
     }
   }
 }
