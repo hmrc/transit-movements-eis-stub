@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,11 +31,8 @@ trait StreamingParsers {
 
   implicit val materializer: Materializer
 
-  // TODO: do we choose a better thread pool, or make configurable?
-  //  We have to be careful to not use Play's EC because we could accidentally starve the thread pool
-  //  and cause errors for additional connections
   implicit val materializerExecutionContext: ExecutionContext =
-    ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(4))
+    ExecutionContext.fromExecutorService(Executors.newCachedThreadPool())
 
   lazy val streamFromMemory: BodyParser[Source[ByteString, _]] = BodyParser {
     _ =>
