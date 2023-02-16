@@ -20,12 +20,14 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes
 import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Request
+import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
 
@@ -37,7 +39,10 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-class MessagesController @Inject() (cc: ControllerComponents)(implicit val materializer: Materializer) extends BackendController(cc) with StreamingParsers {
+class MessagesController @Inject() (cc: ControllerComponents)(implicit val materializer: Materializer)
+    extends BackendController(cc)
+    with StreamingParsers
+    with Logging {
 
   private val HTTP_DATE_FORMATTER  = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH).withZone(ZoneOffset.UTC)
   private val UUID_PATTERN         = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
@@ -55,8 +60,14 @@ class MessagesController @Inject() (cc: ControllerComponents)(implicit val mater
         _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
         _ <- validateHeader(HeaderNames.DATE, isDate)
       } yield ()) match {
-        case Right(())   => Ok
-        case Left(error) => Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error"))
+        case Right(()) => Ok
+        case Left(error) =>
+          logger.error(s"""Request failed with the following error:
+               |$error
+               |
+               |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
+               |""".stripMargin)
+          Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error"))
       }
   }
 
