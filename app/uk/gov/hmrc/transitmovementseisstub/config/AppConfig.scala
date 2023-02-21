@@ -24,4 +24,8 @@ import play.api.Configuration
 class AppConfig @Inject() (config: Configuration) {
 
   lazy val appName: String = config.get[String]("appName")
+
+  lazy val proxyEnabled: Boolean = config.get[Boolean]("proxy.enabled")
+
+  lazy val deniedClientIds: Set[String] = config.get[Seq[String]]("proxy.denied-client-ids").toSet
 }
