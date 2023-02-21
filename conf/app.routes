@@ -1,3 +1,5 @@
 # microservice specific routes
 
+POST        /movements/messages     uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.stubbedRequest()
+
 POST        /:countryCode/movements/messages     uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.post(countryCode: CountryCode)

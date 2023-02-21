@@ -19,6 +19,7 @@ package uk.gov.hmrc.transitmovementseisstub.config
 import javax.inject.Inject
 import javax.inject.Singleton
 import play.api.Configuration
+import uk.gov.hmrc.http.HeaderCarrier
 
 @Singleton
 class AppConfig @Inject() (config: Configuration) {
@@ -28,4 +29,9 @@ class AppConfig @Inject() (config: Configuration) {
   lazy val proxyEnabled: Boolean = config.get[Boolean]("proxy.enabled")
 
   lazy val deniedClientIds: Set[String] = config.get[Seq[String]]("proxy.denied-client-ids").toSet
+
+  lazy val eisXi: EISInstanceConfig = config.get[EISInstanceConfig]("microservice.services.eis.xi")
+  lazy val eisGb: EISInstanceConfig = config.get[EISInstanceConfig]("microservice.services.eis.gb")
+
+  lazy val headerCarrierConfig: HeaderCarrier.Config = HeaderCarrier.Config.fromConfig(config.underlying)
 }
