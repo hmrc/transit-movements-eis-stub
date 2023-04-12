@@ -24,4 +24,7 @@ import play.api.Configuration
 class AppConfig @Inject() (config: Configuration) {
 
   lazy val appName: String = config.get[String]("appName")
+
+  lazy val enforceAuthToken: Boolean = config.get[Boolean]("authorisation.enforce")
+  lazy val authToken: String         = config.get[String]("authorisation.token")
 }
