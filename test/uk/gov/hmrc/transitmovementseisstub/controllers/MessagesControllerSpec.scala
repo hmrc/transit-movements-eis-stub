@@ -18,6 +18,8 @@ package uk.gov.hmrc.transitmovementseisstub.controllers
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import org.mockito.MockitoSugar
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.HeaderNames
@@ -31,6 +33,7 @@ import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.Helpers.status
 import play.api.test.Helpers.stubControllerComponents
 import uk.gov.hmrc.transitmovementseisstub.base.TestActorSystem
+import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -38,15 +41,42 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 
-class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSystem {
+class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSystem with MockitoSugar with BeforeAndAfterEach {
 
   private val HTTP_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH).withZone(ZoneOffset.UTC)
 
-  private val controller = new MessagesController(stubControllerComponents())
+  private val appConfig  = mock[AppConfig]
+  private val controller = new MessagesController(appConfig, stubControllerComponents())
+
+  override def beforeEach(): Unit =
+    reset(appConfig)
 
   "POST /" should {
 
-    "return 200 if all required headers are present and in the correct format" in {
+    "return 200 if all required headers are present and in the correct format without an enforced auth token" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
+      val fakeRequest = FakeRequest(
+        "POST",
+        routes.MessagesController.post.url,
+        FakeHeaders(
+          Seq(
+            "X-Correlation-Id"        -> UUID.randomUUID().toString,
+            "X-Conversation-Id"       -> UUID.randomUUID().toString,
+            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.AUTHORIZATION -> "Bearer abc",
+            HeaderNames.CONTENT_TYPE  -> "application/xml",
+            HeaderNames.ACCEPT        -> "application/xml"
+          )
+        ),
+        Source.empty[ByteString]
+      )
+      val result = controller.post()(fakeRequest)
+      status(result) shouldBe OK
+    }
+
+    "return 200 if all required headers are present and in the correct format with an enforced auth token" in {
+      when(appConfig.enforceAuthToken).thenReturn(true)
+      when(appConfig.authToken).thenReturn("abc")
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post.url,
@@ -67,6 +97,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
     }
 
     "return 403 if a required header is missing" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest("POST", routes.MessagesController.post.url)
       val result      = controller.post()(fakeRequest)
       status(result) shouldBe FORBIDDEN
@@ -77,6 +108,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
     }
 
     "return 403 if all required headers are present and in the correct format except X-Correlation-Id" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post.url,
@@ -101,6 +133,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
     }
 
     "return 403 if all required headers are present and in the correct format except X-Conversation-Id" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post.url,
@@ -125,6 +158,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
     }
 
     "return 403 if all required headers are present and in the correct format except Date" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post.url,
@@ -149,6 +183,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
     }
 
     "return 403 if all required headers are present and in the correct format except Authorization" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post.url,
@@ -172,7 +207,34 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
       )
     }
 
+    "return 403 if all required headers are present and in the correct format except Authorization when ensuring the token is specific and does not match" in {
+      when(appConfig.enforceAuthToken).thenReturn(true)
+      when(appConfig.authToken).thenReturn("easyas123")
+      val fakeRequest = FakeRequest(
+        "POST",
+        routes.MessagesController.post.url,
+        FakeHeaders(
+          Seq(
+            "X-Correlation-Id"        -> UUID.randomUUID().toString,
+            "X-Conversation-Id"       -> UUID.randomUUID().toString,
+            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.AUTHORIZATION -> "Bearer abc",
+            HeaderNames.CONTENT_TYPE  -> "application/xml",
+            HeaderNames.ACCEPT        -> "application/xml"
+          )
+        ),
+        Source.empty[ByteString]
+      )
+      val result = controller.post()(fakeRequest)
+      status(result) shouldBe FORBIDDEN
+      contentAsJson(result) shouldBe Json.obj(
+        "code"    -> "FORBIDDEN",
+        "message" -> "Error in request: Error in header Authorization: Bearer token does not match expected token"
+      )
+    }
+
     "return 403 if all required headers are present and in the correct format except Content Type" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post.url,
@@ -197,6 +259,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
     }
 
     "return 403 if all required headers are present and in the correct format except Accept" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post.url,
