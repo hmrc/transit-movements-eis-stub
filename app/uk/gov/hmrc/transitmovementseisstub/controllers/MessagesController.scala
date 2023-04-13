@@ -36,7 +36,6 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
-import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
@@ -45,7 +44,8 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
     with StreamingParsers
     with Logging {
 
-  private val HTTP_DATE_FORMATTER  = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH).withZone(ZoneOffset.UTC)
+  private val DATE_FORMAT_REGEX    = "^(.+) UTC$".r
+  private val HTTP_DATE_FORMATTER  = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
   private val UUID_PATTERN         = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
   private val BEARER_TOKEN_PATTERN = "^Bearer (\\S+)$".r
 
@@ -97,9 +97,14 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
     }
 
   private def isDate(value: String): Option[String] =
-    Try(HTTP_DATE_FORMATTER.parse(value)) match {
-      case Success(_) => None
-      case Failure(_) => Some(s"Expected date in RFC 7231 format, instead got $value")
+    DATE_FORMAT_REGEX
+      .findFirstMatchIn(value)
+      .map(_.group(1))
+      .map(
+        x => Try(HTTP_DATE_FORMATTER.parse(x))
+      ) match {
+      case Some(Success(_)) => None
+      case _                => Some(s"Expected date in RFC 7231 format, instead got $value")
     }
 
 }
