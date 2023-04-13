@@ -19,9 +19,11 @@ package uk.gov.hmrc.transitmovementseisstub.controllers
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import org.mockito.MockitoSugar
+import org.scalacheck.Gen
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import play.api.http.HeaderNames
 import play.api.http.Status.FORBIDDEN
 import play.api.http.Status.OK
@@ -41,15 +43,24 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 
-class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSystem with MockitoSugar with BeforeAndAfterEach {
+class MessagesControllerSpec
+    extends AnyWordSpec
+    with Matchers
+    with TestActorSystem
+    with MockitoSugar
+    with BeforeAndAfterEach
+    with ScalaCheckDrivenPropertyChecks {
 
-  private val HTTP_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH).withZone(ZoneOffset.UTC)
+  private val HTTP_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
 
   private val appConfig  = mock[AppConfig]
   private val controller = new MessagesController(appConfig, stubControllerComponents())
 
   override def beforeEach(): Unit =
     reset(appConfig)
+
+  lazy val formattedDate       = s"${HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))} UTC"
+  lazy val brokenFormattedDate = s"${HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))} Z"
 
   "POST /" should {
 
@@ -62,7 +73,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
             "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "Bearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/xml",
             HeaderNames.ACCEPT        -> "application/xml"
@@ -84,7 +95,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
             "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "Bearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/xml",
             HeaderNames.ACCEPT        -> "application/xml"
@@ -116,7 +127,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> "UUID.randomUUID().toString",
             "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "Bearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/xml",
             HeaderNames.ACCEPT        -> "application/xml"
@@ -141,7 +152,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
             "X-Conversation-Id"       -> "UUID.randomUUID().toString",
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "Bearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/xml",
             HeaderNames.ACCEPT        -> "application/xml"
@@ -157,29 +168,35 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
       )
     }
 
-    "return 403 if all required headers are present and in the correct format except Date" in {
-      when(appConfig.enforceAuthToken).thenReturn(false)
-      val fakeRequest = FakeRequest(
-        "POST",
-        routes.MessagesController.post.url,
-        FakeHeaders(
-          Seq(
-            "X-Correlation-Id"        -> UUID.randomUUID().toString,
-            "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> "HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))",
-            HeaderNames.AUTHORIZATION -> "Bearer abc",
-            HeaderNames.CONTENT_TYPE  -> "application/xml",
-            HeaderNames.ACCEPT        -> "application/xml"
-          )
-        ),
-        Source.empty[ByteString]
+    "return 403 if all required headers are present and in the correct format except Date" in forAll(
+      Gen.oneOf(
+        "HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))",
+        brokenFormattedDate
       )
-      val result = controller.post()(fakeRequest)
-      status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Error in header Date: Expected date in RFC 7231 format, instead got HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))"
-      )
+    ) {
+      date =>
+        when(appConfig.enforceAuthToken).thenReturn(false)
+        val fakeRequest = FakeRequest(
+          "POST",
+          routes.MessagesController.post.url,
+          FakeHeaders(
+            Seq(
+              "X-Correlation-Id"        -> UUID.randomUUID().toString,
+              "X-Conversation-Id"       -> UUID.randomUUID().toString,
+              HeaderNames.DATE          -> date,
+              HeaderNames.AUTHORIZATION -> "Bearer abc",
+              HeaderNames.CONTENT_TYPE  -> "application/xml",
+              HeaderNames.ACCEPT        -> "application/xml"
+            )
+          ),
+          Source.empty[ByteString]
+        )
+        val result = controller.post()(fakeRequest)
+        status(result) shouldBe FORBIDDEN
+        contentAsJson(result) shouldBe Json.obj(
+          "code"    -> "FORBIDDEN",
+          "message" -> s"Error in request: Error in header Date: Expected date in RFC 7231 format, instead got $date"
+        )
     }
 
     "return 403 if all required headers are present and in the correct format except Authorization" in {
@@ -191,7 +208,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
             "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "NotBearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/xml",
             HeaderNames.ACCEPT        -> "application/xml"
@@ -217,7 +234,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
             "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "Bearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/xml",
             HeaderNames.ACCEPT        -> "application/xml"
@@ -242,7 +259,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
             "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "Bearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/json",
             HeaderNames.ACCEPT        -> "application/xml"
@@ -267,7 +284,7 @@ class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSys
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
             "X-Conversation-Id"       -> UUID.randomUUID().toString,
-            HeaderNames.DATE          -> HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC)),
+            HeaderNames.DATE          -> formattedDate,
             HeaderNames.AUTHORIZATION -> "Bearer abc",
             HeaderNames.CONTENT_TYPE  -> "application/xml",
             HeaderNames.ACCEPT        -> "application/json"
