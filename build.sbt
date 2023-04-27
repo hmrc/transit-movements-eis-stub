@@ -1,5 +1,5 @@
 import uk.gov.hmrc.DefaultBuildSettings.integrationTestSettings
-import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
+import play.sbt.routes.RoutesKeys
 
 val appName = "transit-movements-eis-stub"
 
@@ -10,7 +10,11 @@ lazy val microservice = Project(appName, file("."))
     scalaVersion := "2.13.8",
     PlayKeys.playDefaultPort := 9476,
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
-    scalacOptions += "-Wconf:src=routes/.*:s"
+    scalacOptions += "-Wconf:src=routes/.*:s",
+    RoutesKeys.routesImport ++= Seq(
+      "models.Bindings._",
+      "models.CustomsOffice"
+    )
   )
   .configs(IntegrationTest)
   .settings(integrationTestSettings(): _*)

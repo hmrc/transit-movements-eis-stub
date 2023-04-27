@@ -29,18 +29,25 @@ import play.api.mvc.ControllerComponents
 import play.api.mvc.Request
 import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
+import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
+import uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice
+import uk.gov.hmrc.transitmovementseisstub.models.CustomsOfficeGB
+import uk.gov.hmrc.transitmovementseisstub.models.CustomsOfficeXI
 
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
+import scala.concurrent.Future
 import scala.util.Success
 import scala.util.Try
 
-class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponents)(implicit val materializer: Materializer)
-    extends BackendController(cc)
+class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponents, eisConnectorProvider: EISConnectorProvider)(implicit
+  val materializer: Materializer
+) extends BackendController(cc)
     with StreamingParsers
     with Logging {
 
@@ -49,27 +56,46 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
   private val UUID_PATTERN         = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
   private val BEARER_TOKEN_PATTERN = "^Bearer (\\S+)$".r
 
-  def post(): Action[Source[ByteString, _]] = Action(streamFromMemory) {
+  def post(customsOffice: Option[CustomsOffice]): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
     implicit request: Request[Source[ByteString, _]] =>
-      request.body.runWith(Sink.ignore)
+      request.headers.get("X-Client-Id") match {
+        case Some(client) if appConfig.clientAllowList.contains(client) && appConfig.enableProxyMode && customsOffice.isDefined => routeToEIS(customsOffice.get)
+        case None =>
+          request.body.runWith(Sink.ignore)
 
-      (for {
-        _ <- validateHeader("X-Correlation-Id", isUuid)
-        _ <- validateHeader("X-Conversation-Id", isUuid)
-        _ <- validateHeader(HeaderNames.CONTENT_TYPE, isXml)
-        _ <- validateHeader(HeaderNames.ACCEPT, isXml)
-        _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
-        _ <- validateHeader(HeaderNames.DATE, isDate)
-      } yield ()) match {
-        case Right(()) => Ok
-        case Left(error) =>
-          logger.error(s"""Request failed with the following error:
+          (for {
+            _ <- validateHeader("X-Correlation-Id", isUuid)
+            _ <- validateHeader("X-Conversation-Id", isUuid)
+            _ <- validateHeader(HeaderNames.CONTENT_TYPE, isXml)
+            _ <- validateHeader(HeaderNames.ACCEPT, isXml)
+            _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
+            _ <- validateHeader(HeaderNames.DATE, isDate)
+          } yield ()) match {
+            case Right(()) => Future.successful(Ok)
+            case Left(error) =>
+              logger.error(s"""Request failed with the following error:
                |$error
                |
                |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
                |""".stripMargin)
-          Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error"))
+              Future.successful(Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error")))
+          }
       }
+  }
+
+  private def routeToEIS(customsOffice: CustomsOffice)(implicit request: Request[Source[ByteString, _]]) = {
+    val hc = HeaderCarrierConverter.fromRequest(request)
+
+    val connector = customsOffice match {
+      case CustomsOfficeGB => eisConnectorProvider.gb
+      case CustomsOfficeXI => eisConnectorProvider.xi
+    }
+
+    connector.post(request.body)(hc).map {
+      case Right(_) => Ok
+      case Left(error) =>
+        Status(error.statusCode)(error.message)
+    }
   }
 
   private def validateHeader(header: String, validation: String => Option[String])(implicit request: Request[_]): Either[String, Unit] =
