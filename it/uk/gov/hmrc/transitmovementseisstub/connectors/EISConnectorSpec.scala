@@ -21,35 +21,24 @@ import akka.util.ByteString
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.matching.AnythingPattern
 import com.github.tomakehurst.wiremock.matching.StringValuePattern
-import com.github.tomakehurst.wiremock.stubbing.Scenario
-import org.mockito.ArgumentMatchers
 import org.mockito.MockitoSugar
-import org.mockito.Mockito.when
-import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
-import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.http.HeaderNames
 import play.api.test.Helpers._
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.test.HttpClientV2Support
-import uk.gov.hmrc.transitmovementseisstub.base.TestActorSystem
 import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
 import uk.gov.hmrc.transitmovementseisstub.config.Headers
-import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
-import uk.gov.hmrc.transitmovementseisstub.utils.FakeRequestBuilder
+import uk.gov.hmrc.transitmovementseisstub.utils.TestActorSystem
 import uk.gov.hmrc.transitmovementseisstub.utils.WiremockSuite
 
-import java.net.URL
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
 
 class EISConnectorSpec
     extends AnyWordSpec
@@ -65,7 +54,7 @@ class EISConnectorSpec
 
   lazy val anything: StringValuePattern = new AnythingPattern()
 
-  val uriStub = "/transit-movements-eis-stub/movements/messages"
+  val uriStub = "/ncts5/traderchannelsubmissionsgb/v1"
 
   val connectorConfig: EISInstanceConfig = EISInstanceConfig(
     "http",
@@ -80,15 +69,12 @@ class EISConnectorSpec
 
   def source: Source[ByteString, _] = Source.single(ByteString.fromString("<test></test>"))
 
-  def stub(codeToReturn: Int) =
+  def stub(codeToReturn: Int, body: String = "") =
     server.stubFor(
       post(
         urlEqualTo(uriStub)
       )
-        .inScenario("Standard Call")
-        .withHeader(HeaderNames.ACCEPT, equalTo("application/xml"))
-        .withHeader(HeaderNames.CONTENT_TYPE, equalTo("application/xml"))
-        .willReturn(aResponse().withStatus(codeToReturn))
+        .willReturn(aResponse().withStatus(codeToReturn).withBody(body))
     )
 
   "post" should {
@@ -116,14 +102,14 @@ class EISConnectorSpec
     )
 
     "pass through error status codes" in forAll(errorCodes) {
-      statusCode =>
-        stub(INTERNAL_SERVER_ERROR)
+      code =>
+        stub(code, "error")
 
         val hc = HeaderCarrier()
 
         whenReady(connector.post(source)(hc)) {
           case Left(x) =>
-            x.statusCode mustBe statusCode
+            x.statusCode mustBe code
           case _ =>
             fail("Unexpected status code")
         }

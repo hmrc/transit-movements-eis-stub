@@ -16,11 +16,14 @@
 
 package uk.gov.hmrc.transitmovementseisstub.utils
 
-import play.api.libs.ws.{BodyWritable, WSRequest}
+import play.api.libs.ws.BodyWritable
+import play.api.libs.ws.WSRequest
 import uk.gov.hmrc.http.HttpReads
-import uk.gov.hmrc.http.client.{RequestBuilder, StreamHttpReads}
+import uk.gov.hmrc.http.client.RequestBuilder
+import uk.gov.hmrc.http.client.StreamHttpReads
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.reflect.runtime.universe
 
 class FakeRequestBuilder extends RequestBuilder {

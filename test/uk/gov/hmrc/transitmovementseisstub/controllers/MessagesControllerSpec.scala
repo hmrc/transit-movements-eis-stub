@@ -36,6 +36,7 @@ import play.api.test.Helpers.status
 import play.api.test.Helpers.stubControllerComponents
 import uk.gov.hmrc.transitmovementseisstub.base.TestActorSystem
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
+import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -53,8 +54,9 @@ class MessagesControllerSpec
 
   private val HTTP_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
 
-  private val appConfig  = mock[AppConfig]
-  private val controller = new MessagesController(appConfig, stubControllerComponents())
+  private val appConfig                = mock[AppConfig]
+  private val mockEisConnectorProvider = mock[EISConnectorProvider]
+  private val controller               = new MessagesController(appConfig, stubControllerComponents(), mockEisConnectorProvider)
 
   override def beforeEach(): Unit =
     reset(appConfig)
@@ -68,7 +70,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -81,7 +83,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe OK
     }
 
@@ -90,7 +92,7 @@ class MessagesControllerSpec
       when(appConfig.authToken).thenReturn("abc")
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -103,14 +105,14 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe OK
     }
 
     "return 403 if a required header is missing" in {
       when(appConfig.enforceAuthToken).thenReturn(false)
-      val fakeRequest = FakeRequest("POST", routes.MessagesController.post.url)
-      val result      = controller.post()(fakeRequest)
+      val fakeRequest = FakeRequest("POST", routes.MessagesController.post("gb").url)
+      val result      = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -122,7 +124,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> "UUID.randomUUID().toString",
@@ -135,7 +137,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -147,7 +149,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -160,7 +162,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -178,7 +180,7 @@ class MessagesControllerSpec
         when(appConfig.enforceAuthToken).thenReturn(false)
         val fakeRequest = FakeRequest(
           "POST",
-          routes.MessagesController.post.url,
+          routes.MessagesController.post("gb").url,
           FakeHeaders(
             Seq(
               "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -191,7 +193,7 @@ class MessagesControllerSpec
           ),
           Source.empty[ByteString]
         )
-        val result = controller.post()(fakeRequest)
+        val result = controller.post("gb")(fakeRequest)
         status(result) shouldBe FORBIDDEN
         contentAsJson(result) shouldBe Json.obj(
           "code"    -> "FORBIDDEN",
@@ -203,7 +205,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -216,7 +218,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -229,7 +231,7 @@ class MessagesControllerSpec
       when(appConfig.authToken).thenReturn("easyas123")
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -242,7 +244,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -254,7 +256,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -267,7 +269,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -279,7 +281,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post.url,
+        routes.MessagesController.post("gb").url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -292,7 +294,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post()(fakeRequest)
+      val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",

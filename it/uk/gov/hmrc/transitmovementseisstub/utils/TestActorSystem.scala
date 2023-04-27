@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.transitmovementseisstub.models
+package uk.gov.hmrc.transitmovementseisstub.utils
 
-import play.api.libs.json.Json
+import akka.actor.ActorSystem
+import akka.stream.Materializer
+import org.scalatest.Suite
 
-import java.time.OffsetDateTime
-
-case class EISResponse(message: String, timestamp: OffsetDateTime, path: String) {
-  def invalidAccessCode = message == "Not Valid Access Code for this operation"
-  def invalidGRN        = message.contains("Guarantee not found for GRN")
+object TestActorSystem {
+  val system: ActorSystem = ActorSystem("test")
 }
 
-object EISResponse {
-  implicit val format = Json.format[EISResponse]
+trait TestActorSystem { self: Suite =>
+  implicit val system: ActorSystem        = TestActorSystem.system
+  implicit val materializer: Materializer = Materializer(TestActorSystem.system)
 }
