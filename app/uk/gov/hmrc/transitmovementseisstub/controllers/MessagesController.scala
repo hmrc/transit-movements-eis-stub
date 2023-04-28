@@ -27,6 +27,7 @@ import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Request
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
@@ -55,13 +56,16 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
 
   def routeToEIScheck(client: String, customsOffice: String): Boolean = appConfig.clientAllowList.contains(
     client
-  ) && appConfig.enableProxyMode && customsOffice.isBlank && (customsOffice == "gb" | customsOffice == "xi")
+  ) && appConfig.enableProxyMode && !customsOffice.isBlank && (customsOffice == "gb" | customsOffice == "xi")
 
   def post(customsOffice: String): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
     implicit request: Request[Source[ByteString, _]] =>
-      request.headers.get("X-Client-Id") match {
-        case Some(client) if routeToEIScheck(client, customsOffice) => routeToEIS(customsOffice)
-        case None | Some(_) =>
+      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+
+      hc.headers(Seq("X-Client-Id")) match {
+        case Seq(clientHeaderAndValue) if routeToEIScheck(clientHeaderAndValue._2, customsOffice) =>
+          routeToEIS(customsOffice)
+        case _ =>
           request.body.runWith(Sink.ignore)
 
           (for {
@@ -84,8 +88,7 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
       }
   }
 
-  private def routeToEIS(customsOffice: String)(implicit request: Request[Source[ByteString, _]]) = {
-    val hc = HeaderCarrierConverter.fromRequest(request)
+  private def routeToEIS(customsOffice: String)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
 
     val connector = customsOffice match {
       case "gb" => eisConnectorProvider.gb
