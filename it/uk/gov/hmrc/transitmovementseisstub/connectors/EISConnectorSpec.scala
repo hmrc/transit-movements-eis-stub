@@ -21,6 +21,7 @@ import akka.util.ByteString
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.matching.AnythingPattern
 import com.github.tomakehurst.wiremock.matching.StringValuePattern
+import org.mockito.ArgumentMatchers
 import org.mockito.MockitoSugar
 import org.scalacheck.Gen
 import org.scalatest.concurrent.IntegrationPatience
@@ -32,12 +33,17 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.http.HeaderNames
 import play.api.test.Helpers._
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.test.HttpClientV2Support
 import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
 import uk.gov.hmrc.transitmovementseisstub.config.Headers
+import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
+import uk.gov.hmrc.transitmovementseisstub.utils.FakeRequestBuilder
 import uk.gov.hmrc.transitmovementseisstub.utils.TestActorSystem
+import uk.gov.hmrc.transitmovementseisstub.utils.TestHelpers
 import uk.gov.hmrc.transitmovementseisstub.utils.WiremockSuite
 
+import java.net.URL
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class EISConnectorSpec
@@ -113,6 +119,20 @@ class EISConnectorSpec
           case _ =>
             fail("Unexpected status code")
         }
+    }
+
+    "handle exceptions by returning an HttpResponse with status code 500" in {
+      val httpClientV2 = mock[HttpClientV2]
+
+      val hc        = HeaderCarrier()
+      val connector = new EISConnectorImpl("Failure", connectorConfig, httpClientV2)
+
+      when(httpClientV2.post(ArgumentMatchers.any[URL])(ArgumentMatchers.any[HeaderCarrier])).thenReturn(new FakeRequestBuilder)
+
+      whenReady(connector.post(source)(hc)) {
+        case Left(x) if x.isInstanceOf[RoutingError] => x.statusCode mustBe INTERNAL_SERVER_ERROR
+        case _                                       => fail("Left was not a RoutingError")
+      }
     }
   }
 
