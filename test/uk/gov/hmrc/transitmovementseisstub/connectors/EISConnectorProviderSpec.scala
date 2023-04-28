@@ -18,16 +18,11 @@ package uk.gov.hmrc.transitmovementseisstub.connectors
 
 import akka.stream.Materializer
 import akka.stream.testkit.NoMaterializer
-import org.mockito.Mockito.reset
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.when
 import org.mockito.MockitoSugar
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import uk.gov.hmrc.http.test.HttpClientV2Support
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
