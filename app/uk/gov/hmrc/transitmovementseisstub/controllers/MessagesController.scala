@@ -27,20 +27,25 @@ import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Request
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
+import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
 
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
+import scala.concurrent.Future
 import scala.util.Success
 import scala.util.Try
 
-class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponents)(implicit val materializer: Materializer)
-    extends BackendController(cc)
+class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponents, eisConnectorProvider: EISConnectorProvider)(implicit
+  val materializer: Materializer
+) extends BackendController(cc)
     with StreamingParsers
     with Logging {
 
@@ -49,27 +54,63 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
   private val UUID_PATTERN         = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
   private val BEARER_TOKEN_PATTERN = "^Bearer (\\S+)$".r
 
-  def post(): Action[Source[ByteString, _]] = Action(streamFromMemory) {
-    implicit request: Request[Source[ByteString, _]] =>
-      request.body.runWith(Sink.ignore)
+  def routeToEIScheck(client: String, customsOffice: String): Boolean = appConfig.clientAllowList.contains(
+    client
+  ) && appConfig.enableProxyMode && !customsOffice.isBlank && (customsOffice == "gb" || customsOffice == "xi")
 
-      (for {
-        _ <- validateHeader("X-Correlation-Id", isUuid)
-        _ <- validateHeader("X-Conversation-Id", isUuid)
-        _ <- validateHeader(HeaderNames.CONTENT_TYPE, isXml)
-        _ <- validateHeader(HeaderNames.ACCEPT, isXml)
-        _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
-        _ <- validateHeader(HeaderNames.DATE, isDate)
-      } yield ()) match {
-        case Right(()) => Ok
-        case Left(error) =>
-          logger.error(s"""Request failed with the following error:
-               |$error
-               |
-               |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
-               |""".stripMargin)
-          Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error"))
+  def post(customsOffice: String): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
+    implicit request: Request[Source[ByteString, _]] =>
+      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+
+      hc.headers(Seq("X-Client-Id")) match {
+        case Seq(clientHeaderAndValue) if routeToEIScheck(clientHeaderAndValue._2, customsOffice) =>
+          routeToEIS(customsOffice)
+        case _ =>
+          routeToStub
       }
+  }
+
+  def postToStub: Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
+    implicit request: Request[Source[ByteString, _]] =>
+      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+      routeToStub
+  }
+
+  private def routeToStub(implicit request: Request[Source[ByteString, _]]) = {
+    request.body.runWith(Sink.ignore)
+
+    (for {
+      _ <- validateHeader("X-Correlation-Id", isUuid)
+      _ <- validateHeader("X-Conversation-Id", isUuid)
+      _ <- validateHeader(HeaderNames.CONTENT_TYPE, isXml)
+      _ <- validateHeader(HeaderNames.ACCEPT, isXml)
+      _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
+      _ <- validateHeader(HeaderNames.DATE, isDate)
+    } yield ()) match {
+      case Right(()) => Future.successful(Ok)
+      case Left(error) =>
+        logger.error(s"""Request failed with the following error:
+                 |$error
+                 |
+                 |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
+                 |""".stripMargin)
+        Future.successful(Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error")))
+    }
+
+  }
+
+  private def routeToEIS(customsOffice: String)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
+
+    val connector = customsOffice match {
+      case "gb" => eisConnectorProvider.gb
+      case "xi" => eisConnectorProvider.xi
+    }
+
+    connector.post(request.body)(hc).map {
+      case Right(_) => Ok
+      case Left(error) =>
+        Status(error.statusCode)(error.message)
+    }
   }
 
   private def validateHeader(header: String, validation: String => Option[String])(implicit request: Request[_]): Either[String, Unit] =

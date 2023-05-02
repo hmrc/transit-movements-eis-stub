@@ -1,5 +1,5 @@
 import uk.gov.hmrc.DefaultBuildSettings.integrationTestSettings
-import uk.gov.hmrc.sbtdistributables.SbtDistributablesPlugin.publishingSettings
+import play.sbt.routes.RoutesKeys
 
 val appName = "transit-movements-eis-stub"
 
