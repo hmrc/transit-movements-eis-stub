@@ -29,8 +29,7 @@ object EISInstanceConfig {
           config.get[String]("protocol"),
           config.get[String]("host"),
           config.get[Int]("port"),
-          config.get[String]("uri"),
-          config.get[Headers]("headers")
+          config.get[String]("uri")
         )
     }
 
@@ -40,8 +39,7 @@ case class EISInstanceConfig(
   protocol: String,
   host: String,
   port: Int,
-  uri: String,
-  headers: Headers
+  uri: String
 ) {
 
   lazy val url: String = s"$protocol://$host:$port$uri"

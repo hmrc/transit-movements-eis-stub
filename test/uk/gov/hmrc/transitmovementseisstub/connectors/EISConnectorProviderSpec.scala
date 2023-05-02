@@ -26,7 +26,6 @@ import org.scalatest.matchers.must.Matchers
 import uk.gov.hmrc.http.test.HttpClientV2Support
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
-import uk.gov.hmrc.transitmovementseisstub.config.Headers
 
 import java.time.Clock
 import scala.concurrent.ExecutionContext.Implicits.global

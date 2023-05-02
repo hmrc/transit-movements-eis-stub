@@ -30,17 +30,14 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import play.api.http.HeaderNames
 import play.api.test.Helpers._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.test.HttpClientV2Support
 import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
-import uk.gov.hmrc.transitmovementseisstub.config.Headers
 import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
 import uk.gov.hmrc.transitmovementseisstub.utils.FakeRequestBuilder
 import uk.gov.hmrc.transitmovementseisstub.utils.TestActorSystem
-import uk.gov.hmrc.transitmovementseisstub.utils.TestHelpers
 import uk.gov.hmrc.transitmovementseisstub.utils.WiremockSuite
 
 import java.net.URL
@@ -66,8 +63,7 @@ class EISConnectorSpec
     "http",
     "localhost",
     wiremockPort,
-    uriStub,
-    Headers("bearertokenhereGB")
+    uriStub
   )
 
   // We construct the connector each time to avoid issues with the circuit breaker
@@ -79,9 +75,11 @@ class EISConnectorSpec
     server.stubFor(
       post(
         urlEqualTo(uriStub)
-      )
+      ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
         .willReturn(aResponse().withStatus(codeToReturn).withBody(body))
     )
+
+  implicit val hc = HeaderCarrier(Some(uk.gov.hmrc.http.Authorization("Bearer bearertokenhereGB")))
 
   "post" should {
 
@@ -89,8 +87,6 @@ class EISConnectorSpec
       server.resetAll()
 
       stub(OK)
-
-      val hc = HeaderCarrier()
 
       whenReady(connector.post(source)(hc)) {
         _.isRight mustBe true
@@ -111,8 +107,6 @@ class EISConnectorSpec
       code =>
         stub(code, "error")
 
-        val hc = HeaderCarrier()
-
         whenReady(connector.post(source)(hc)) {
           case Left(x) =>
             x.statusCode mustBe code
@@ -124,7 +118,6 @@ class EISConnectorSpec
     "handle exceptions by returning an HttpResponse with status code 500" in {
       val httpClientV2 = mock[HttpClientV2]
 
-      val hc        = HeaderCarrier()
       val connector = new EISConnectorImpl("Failure", connectorConfig, httpClientV2)
 
       when(httpClientV2.post(ArgumentMatchers.any[URL])(ArgumentMatchers.any[HeaderCarrier])).thenReturn(new FakeRequestBuilder)
