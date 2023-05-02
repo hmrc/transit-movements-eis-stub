@@ -56,7 +56,7 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
 
   def routeToEIScheck(client: String, customsOffice: String): Boolean = appConfig.clientAllowList.contains(
     client
-  ) && appConfig.enableProxyMode && !customsOffice.isBlank && (customsOffice == "gb" | customsOffice == "xi")
+  ) && appConfig.enableProxyMode && !customsOffice.isBlank && (customsOffice == "gb" || customsOffice == "xi")
 
   def post(customsOffice: String): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
     implicit request: Request[Source[ByteString, _]] =>
@@ -66,26 +66,37 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
         case Seq(clientHeaderAndValue) if routeToEIScheck(clientHeaderAndValue._2, customsOffice) =>
           routeToEIS(customsOffice)
         case _ =>
-          request.body.runWith(Sink.ignore)
-
-          (for {
-            _ <- validateHeader("X-Correlation-Id", isUuid)
-            _ <- validateHeader("X-Conversation-Id", isUuid)
-            _ <- validateHeader(HeaderNames.CONTENT_TYPE, isXml)
-            _ <- validateHeader(HeaderNames.ACCEPT, isXml)
-            _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
-            _ <- validateHeader(HeaderNames.DATE, isDate)
-          } yield ()) match {
-            case Right(()) => Future.successful(Ok)
-            case Left(error) =>
-              logger.error(s"""Request failed with the following error:
-               |$error
-               |
-               |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
-               |""".stripMargin)
-              Future.successful(Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error")))
-          }
+          routeToStub
       }
+  }
+
+  def postToStub: Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
+    implicit request: Request[Source[ByteString, _]] =>
+      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
+      routeToStub
+  }
+
+  private def routeToStub(implicit request: Request[Source[ByteString, _]]) = {
+    request.body.runWith(Sink.ignore)
+
+    (for {
+      _ <- validateHeader("X-Correlation-Id", isUuid)
+      _ <- validateHeader("X-Conversation-Id", isUuid)
+      _ <- validateHeader(HeaderNames.CONTENT_TYPE, isXml)
+      _ <- validateHeader(HeaderNames.ACCEPT, isXml)
+      _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
+      _ <- validateHeader(HeaderNames.DATE, isDate)
+    } yield ()) match {
+      case Right(()) => Future.successful(Ok)
+      case Left(error) =>
+        logger.error(s"""Request failed with the following error:
+                 |$error
+                 |
+                 |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
+                 |""".stripMargin)
+        Future.successful(Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error")))
+    }
+
   }
 
   private def routeToEIS(customsOffice: String)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
