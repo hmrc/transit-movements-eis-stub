@@ -42,8 +42,7 @@ class EISConnectorProviderSpec extends AnyFreeSpec with HttpClientV2Support with
         "http",
         "localhost",
         1234,
-        "/gb",
-        Headers("bearertokengb")
+        "/gb"
       )
     )
 
@@ -52,8 +51,7 @@ class EISConnectorProviderSpec extends AnyFreeSpec with HttpClientV2Support with
         "http",
         "localhost",
         1234,
-        "/xi",
-        Headers("bearertokengb")
+        "/xi"
       )
     )
   }
