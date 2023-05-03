@@ -30,6 +30,7 @@ import org.scalatest.matchers.must.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import play.api.http.MimeTypes
 import play.api.test.Helpers._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -41,6 +42,11 @@ import uk.gov.hmrc.transitmovementseisstub.utils.TestActorSystem
 import uk.gov.hmrc.transitmovementseisstub.utils.WiremockSuite
 
 import java.net.URL
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class EISConnectorSpec
@@ -71,15 +77,34 @@ class EISConnectorSpec
 
   def source: Source[ByteString, _] = Source.single(ByteString.fromString("<test></test>"))
 
+  private lazy val correlationId  = UUID.randomUUID()
+  private lazy val conversationId = UUID.randomUUID()
+  private lazy val date           = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC).format(Instant.now())
+
   def stub(codeToReturn: Int, body: String = "") =
     server.stubFor(
       post(
         urlEqualTo(uriStub)
-      ).withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
+      )
+        .withHeader("Authorization", equalTo("Bearer bearertokenhereGB"))
+        .withHeader("X-Correlation-Id", equalTo(correlationId.toString))
+        .withHeader("X-Conversation-Id", equalTo(conversationId.toString))
+        .withHeader("Content-Type", equalTo(MimeTypes.XML))
+        .withHeader("Accept", equalTo(MimeTypes.XML))
+        .withHeader("Date", equalTo(date))
         .willReturn(aResponse().withStatus(codeToReturn).withBody(body))
     )
 
-  implicit val hc = HeaderCarrier(Some(uk.gov.hmrc.http.Authorization("Bearer bearertokenhereGB")))
+  implicit val hc = HeaderCarrier(
+    authorization = Some(uk.gov.hmrc.http.Authorization("Bearer bearertokenhereGB")),
+    otherHeaders = Seq(
+      "X-Correlation-Id"  -> correlationId.toString,
+      "X-Conversation-Id" -> conversationId.toString,
+      "Date"              -> date,
+      "Content-Type"      -> MimeTypes.XML,
+      "Accept"            -> MimeTypes.XML
+    )
+  )
 
   "post" should {
 
