@@ -51,6 +51,9 @@ class EISConnectorImpl(
   override def post(body: Source[ByteString, _])(implicit hc: HeaderCarrier): Future[Either[RoutingError, Unit]] =
     httpClientV2
       .post(url"${eisInstanceConfig.url}")
+      .setHeader(
+        hc.headers(Seq("X-Conversation-Id", "X-Correlation-Id", "Content-Type", "Accept", "Date")): _*
+      )
       .withBody(body)
       .execute[Either[UpstreamErrorResponse, HttpResponse]]
       .map {
