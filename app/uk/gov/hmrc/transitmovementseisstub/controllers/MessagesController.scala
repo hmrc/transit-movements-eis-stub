@@ -72,7 +72,6 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
 
   def postToStub: Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
     implicit request: Request[Source[ByteString, _]] =>
-      implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
       routeToStub
   }
 
@@ -100,7 +99,6 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
   }
 
   private def routeToEIS(customsOffice: String)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
-
     val connector = customsOffice match {
       case "gb" => eisConnectorProvider.gb
       case "xi" => eisConnectorProvider.xi
