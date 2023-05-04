@@ -42,7 +42,9 @@ import uk.gov.hmrc.transitmovementseisstub.utils.TestActorSystem
 import uk.gov.hmrc.transitmovementseisstub.utils.WiremockSuite
 
 import java.net.URL
+import java.time.Clock
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -72,14 +74,16 @@ class EISConnectorSpec
     uriStub
   )
 
+  val clock: Clock = Clock.fixed(LocalDateTime.of(2023, 5, 4, 12, 36, 8, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
+
   // We construct the connector each time to avoid issues with the circuit breaker
-  def connector = new EISConnectorImpl("eis", connectorConfig, httpClientV2)
+  def connector = new EISConnectorImpl("eis", connectorConfig, httpClientV2, clock)
 
   def source: Source[ByteString, _] = Source.single(ByteString.fromString("<test></test>"))
 
   private lazy val correlationId  = UUID.randomUUID()
   private lazy val conversationId = UUID.randomUUID()
-  private lazy val date           = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC).format(Instant.now())
+  private lazy val date           = s"${DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC).format(Instant.now(clock))} UTC"
 
   def stub(codeToReturn: Int, body: String = "") =
     server.stubFor(
@@ -100,7 +104,7 @@ class EISConnectorSpec
     otherHeaders = Seq(
       "X-Correlation-Id"  -> correlationId.toString,
       "X-Conversation-Id" -> conversationId.toString,
-      "Date"              -> date,
+      "Date"              -> s"${DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC).format(Instant.now())} UTC",
       "Content-Type"      -> MimeTypes.XML,
       "Accept"            -> MimeTypes.XML
     )
@@ -143,7 +147,7 @@ class EISConnectorSpec
     "handle exceptions by returning an HttpResponse with status code 500" in {
       val httpClientV2 = mock[HttpClientV2]
 
-      val connector = new EISConnectorImpl("Failure", connectorConfig, httpClientV2)
+      val connector = new EISConnectorImpl("Failure", connectorConfig, httpClientV2, clock)
 
       when(httpClientV2.post(ArgumentMatchers.any[URL])(ArgumentMatchers.any[HeaderCarrier])).thenReturn(new FakeRequestBuilder)
 

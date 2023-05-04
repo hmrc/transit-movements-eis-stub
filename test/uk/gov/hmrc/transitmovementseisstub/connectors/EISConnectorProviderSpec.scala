@@ -64,7 +64,7 @@ class EISConnectorProviderSpec extends AnyFreeSpec with HttpClientV2Support with
     "getting the GB connector will get the GB config" in {
 
       // Given this message connector
-      val sut = new EISConnectorProviderImpl(appConfig, httpClientV2)
+      val sut = new EISConnectorProviderImpl(appConfig, httpClientV2, Clock.systemUTC())
 
       // When we call the lazy val for GB
       sut.gb
@@ -79,7 +79,7 @@ class EISConnectorProviderSpec extends AnyFreeSpec with HttpClientV2Support with
     "getting the XI connector will get the XI config" in {
 
       // Given this message connector
-      val sut = new EISConnectorProviderImpl(appConfig, httpClientV2)
+      val sut = new EISConnectorProviderImpl(appConfig, httpClientV2, Clock.systemUTC())
 
       // When we call the lazy val for XI
       sut.xi
@@ -94,7 +94,7 @@ class EISConnectorProviderSpec extends AnyFreeSpec with HttpClientV2Support with
     "both connectors are not the same" in {
 
       // Given this message connector
-      val sut = new EISConnectorProviderImpl(appConfig, httpClientV2)
+      val sut = new EISConnectorProviderImpl(appConfig, httpClientV2, Clock.systemUTC())
 
       sut.gb must not be sut.xi
     }

@@ -23,6 +23,7 @@ import com.google.inject.Singleton
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 
+import java.time.Clock
 import scala.concurrent.ExecutionContext
 
 @ImplementedBy(classOf[EISConnectorProviderImpl])
@@ -35,11 +36,12 @@ trait EISConnectorProvider {
 @Singleton // singleton as the message connectors need to be singletons for the circuit breakers.
 class EISConnectorProviderImpl @Inject() (
   appConfig: AppConfig,
-  httpClientV2: HttpClientV2
+  httpClientV2: HttpClientV2,
+  clock: Clock
 )(implicit ec: ExecutionContext, mat: Materializer)
     extends EISConnectorProvider {
 
-  lazy val gb: EISConnector = new EISConnectorImpl("GB", appConfig.eisGb, httpClientV2)
-  lazy val xi: EISConnector = new EISConnectorImpl("XI", appConfig.eisXi, httpClientV2)
+  lazy val gb: EISConnector = new EISConnectorImpl("GB", appConfig.eisGb, httpClientV2, clock)
+  lazy val xi: EISConnector = new EISConnectorImpl("XI", appConfig.eisXi, httpClientV2, clock)
 
 }

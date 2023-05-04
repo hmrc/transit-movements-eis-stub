@@ -20,6 +20,8 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import play.api.Logging
+import play.api.http.HeaderNames
+import play.api.http.MimeTypes
 import play.api.http.Status.INTERNAL_SERVER_ERROR
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.HttpReads.Implicits._
@@ -30,6 +32,11 @@ import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
 import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
 
+import java.time.Clock
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -41,18 +48,30 @@ trait EISConnector {
 class EISConnectorImpl(
   val code: String,
   val eisInstanceConfig: EISInstanceConfig,
-  httpClientV2: HttpClientV2
+  httpClientV2: HttpClientV2,
+  clock: Clock
 )(implicit
   ec: ExecutionContext,
   val materializer: Materializer
 ) extends EISConnector
     with Logging {
 
+  private val HTTP_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
+
+  private def nowFormatted(): String =
+    s"${HTTP_DATE_FORMATTER.format(OffsetDateTime.now(clock.withZone(ZoneOffset.UTC)))} UTC"
+
   override def post(body: Source[ByteString, _])(implicit hc: HeaderCarrier): Future[Either[RoutingError, Unit]] =
     httpClientV2
       .post(url"${eisInstanceConfig.url}")
       .setHeader(
-        hc.headers(Seq("X-Conversation-Id", "X-Correlation-Id", "Content-Type", "Accept", "Date")): _*
+        hc.headers(Seq("X-Conversation-Id", "X-Correlation-Id")): _*
+      )
+      .setHeader(
+        HeaderNames.AUTHORIZATION -> hc.authorization.get.value,
+        HeaderNames.CONTENT_TYPE  -> MimeTypes.XML,
+        HeaderNames.ACCEPT        -> MimeTypes.XML,
+        HeaderNames.DATE          -> nowFormatted()
       )
       .withBody(body)
       .execute[Either[UpstreamErrorResponse, HttpResponse]]
