@@ -32,6 +32,12 @@ class AppConfig @Inject() (config: Configuration) {
 
   lazy val clientAllowList: Seq[String] = config.get[Seq[String]]("client-allow-list")
 
-  lazy val eisXi: EISInstanceConfig = config.get[EISInstanceConfig]("microservice.services.eis.xi")
+  lazy val eisXi: EISInstanceConfig = EISInstanceConfig(
+    "https",
+    "if.ws.tt.hmrc.gov.uk",
+    443,
+    "/ncts5/traderchannelsubmissionsxi/v1"
+  )
+  // config.get[EISInstanceConfig]("microservice.services.eis.xi")
   lazy val eisGb: EISInstanceConfig = config.get[EISInstanceConfig]("microservice.services.eis.gb")
 }
