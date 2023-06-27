@@ -39,9 +39,13 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.Await
 import scala.concurrent.Future
 import scala.util.Success
 import scala.util.Try
+import scala.util.control.NonFatal
+import scala.xml.XML.loadString
 
 class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponents, eisConnectorProvider: EISConnectorProvider)(implicit
   val materializer: Materializer
@@ -53,6 +57,7 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
   private val HTTP_DATE_FORMATTER  = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
   private val UUID_PATTERN         = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
   private val BEARER_TOKEN_PATTERN = "^Bearer (\\S+)$".r
+  private lazy val lrnRegexPattern = """^LRN\d*$""".r
 
   def routeToEIScheck(client: String, customsOffice: String): Boolean = appConfig.clientAllowList.contains(
     client
@@ -75,9 +80,7 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
       routeToStub
   }
 
-  private def routeToStub(implicit request: Request[Source[ByteString, _]]) = {
-    request.body.runWith(Sink.ignore)
-
+  private def routeToStub(implicit request: Request[Source[ByteString, _]]) =
     (for {
       _ <- validateHeader("X-Correlation-Id", isUuid)
       _ <- validateHeader("X-Conversation-Id", isUuid)
@@ -85,18 +88,18 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
       _ <- validateHeader(HeaderNames.ACCEPT, isXml)
       _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
       _ <- validateHeader(HeaderNames.DATE, isDate)
+      _ <- validateLRN(request.body)
     } yield ()) match {
-      case Right(()) => Future.successful(Ok)
+      case Right(()) =>
+        Future.successful(Ok)
       case Left(error) =>
         logger.error(s"""Request failed with the following error:
-                 |$error
-                 |
-                 |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
-                 |""".stripMargin)
+             |$error
+             |
+             |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
+             |""".stripMargin)
         Future.successful(Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error")))
     }
-
-  }
 
   private def routeToEIS(customsOffice: String)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
     val connector = customsOffice match {
@@ -145,5 +148,34 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
       case Some(Success(_)) => None
       case _                => Some(s"Expected date in RFC 7231 format, instead got $value")
     }
+
+  private def validateLRN(requestBody: Source[ByteString, _]): Either[String, Unit] = {
+
+    val sinkFold: Sink[ByteString, Future[String]] = Sink.fold("") {
+      case (acc, str) =>
+        acc + str.decodeString("UTF-8")
+    }
+
+    val result = requestBody
+      .runWith(sinkFold)
+      .map {
+        string =>
+          loadString(string)
+      }
+      .map {
+        xml =>
+          val lrn = (xml \ "CC015C" \ "TransitOperation" \ "LRN").text
+          lrnRegexPattern
+            .findFirstMatchIn(lrn) match {
+            case Some(_) => Left(s"The supplied LRN: $lrn has already been used by submitter: messageSender")
+            case _       => Right(())
+          }
+      }
+      .recover {
+        case NonFatal(ex) => Right(())
+      }
+
+    Await.result(result, 5.seconds)
+  }
 
 }

@@ -42,6 +42,7 @@ import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnector
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
 
+import java.nio.charset.StandardCharsets
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -304,6 +305,35 @@ class MessagesControllerSpec
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
         "message" -> "Error in request: Error in header Accept: Expected application/xml, got application/json"
+      )
+    }
+
+    "return 403 if all required headers are present and in the expected format for LRN" in {
+      when(appConfig.enforceAuthToken).thenReturn(false)
+      val lrn = "LRN99999999"
+      val xmlRequestBody =
+        s"<n1:TraderChannelSubmission><ncts:CC015C><TransitOperation><LRN>$lrn</LRN></TransitOperation></ncts:CC015C></n1:TraderChannelSubmission>"
+
+      val fakeRequest = FakeRequest(
+        "POST",
+        routes.MessagesController.post("gb").url,
+        FakeHeaders(
+          Seq(
+            "X-Correlation-Id"        -> UUID.randomUUID().toString,
+            "X-Conversation-Id"       -> UUID.randomUUID().toString,
+            HeaderNames.DATE          -> formattedDate,
+            HeaderNames.AUTHORIZATION -> "Bearer abc",
+            HeaderNames.CONTENT_TYPE  -> "application/xml",
+            HeaderNames.ACCEPT        -> "application/xml"
+          )
+        ),
+        Source.single(ByteString(xmlRequestBody, StandardCharsets.UTF_8))
+      )
+      val result = controller.post("gb")(fakeRequest)
+      status(result) shouldBe FORBIDDEN
+      contentAsJson(result) shouldBe Json.obj(
+        "code"    -> "FORBIDDEN",
+        "message" -> s"Error in request: The supplied LRN: $lrn has already been used by submitter: messageSender"
       )
     }
 
