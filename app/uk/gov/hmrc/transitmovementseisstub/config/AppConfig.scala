@@ -28,9 +28,11 @@ class AppConfig @Inject() (config: Configuration) {
   lazy val enforceAuthToken: Boolean = config.get[Boolean]("authorisation.enforce")
   lazy val authToken: String         = config.get[String]("authorisation.token")
 
-  lazy val enableProxyMode: Boolean = config.get[Boolean]("enable-proxy-mode")
+  lazy val enableProxyModeGb: Boolean = config.get[Boolean]("enable-proxy-mode.gb")
+  lazy val enableProxyModeXi: Boolean = config.get[Boolean]("enable-proxy-mode.xi")
 
-  lazy val clientAllowList: Seq[String] = config.get[Seq[String]]("client-allow-list")
+  lazy val clientAllowList: Seq[String]   = config.get[Seq[String]]("client-allow-list")
+  lazy val internalAllowList: Seq[String] = config.get[Seq[String]]("internal-allow-list")
 
   lazy val eisXi: EISInstanceConfig = config.get[EISInstanceConfig]("microservice.services.eis.xi")
   lazy val eisGb: EISInstanceConfig = config.get[EISInstanceConfig]("microservice.services.eis.gb")

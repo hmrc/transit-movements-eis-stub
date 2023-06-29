@@ -1,5 +1,6 @@
 # microservice specific routes
 
-POST        /movements/messages/:customsOffice     uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.post(customsOffice: String)
-
 POST        /movements/messages/                   uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.postToStub
+
+POST        /movements/messages/:customsOffice     uk.gov.hmrc.transitmovementseisstub.controllers.MessagesController.post(customsOffice: CustomsOffice)
+
