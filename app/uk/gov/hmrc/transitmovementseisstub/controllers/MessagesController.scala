@@ -34,6 +34,7 @@ import uk.gov.hmrc.play.http.HeaderCarrierConverter
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
+import uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice
 
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -54,11 +55,10 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
   private val UUID_PATTERN         = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
   private val BEARER_TOKEN_PATTERN = "^Bearer (\\S+)$".r
 
-  def routeToEIScheck(client: String, customsOffice: String): Boolean = appConfig.clientAllowList.contains(
-    client
-  ) && appConfig.enableProxyMode && !customsOffice.isBlank && (customsOffice == "gb" || customsOffice == "xi")
+  def routeToEIScheck(client: String, customsOffice: CustomsOffice): Boolean =
+    (appConfig.clientAllowList.contains(client) && customsOffice.proxyEnabled(appConfig)) || appConfig.internalAllowList.contains(client)
 
-  def post(customsOffice: String): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
+  def post(customsOffice: CustomsOffice): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
     implicit request: Request[Source[ByteString, _]] =>
       implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
@@ -98,10 +98,10 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
 
   }
 
-  private def routeToEIS(customsOffice: String)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
-    val connector = customsOffice match {
-      case "gb" => eisConnectorProvider.gb
-      case "xi" => eisConnectorProvider.xi
+  private def routeToEIS(customsOffice: CustomsOffice)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
+    val connector = (customsOffice: @unchecked) match {
+      case CustomsOffice.Gb => eisConnectorProvider.gb
+      case CustomsOffice.Xi => eisConnectorProvider.xi
     }
 
     connector.post(request.body)(hc).map {
