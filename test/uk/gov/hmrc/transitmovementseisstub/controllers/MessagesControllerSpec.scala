@@ -18,6 +18,8 @@ package uk.gov.hmrc.transitmovementseisstub.controllers
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import cats.data.EitherT
+import cats.implicits.catsStdInstancesForFuture
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar
 import org.scalacheck.Gen
@@ -41,6 +43,10 @@ import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnector
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
+import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
+import uk.gov.hmrc.transitmovementseisstub.models.errors.ParserError
+import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorService
+import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorServiceImpl
 
 import java.nio.charset.StandardCharsets
 import java.time.OffsetDateTime
@@ -48,7 +54,9 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.xml.NodeSeq
 
 class MessagesControllerSpec
     extends AnyWordSpec
@@ -62,7 +70,8 @@ class MessagesControllerSpec
 
   private val appConfig                = mock[AppConfig]
   private val mockEisConnectorProvider = mock[EISConnectorProvider]
-  private val controller               = new MessagesController(appConfig, stubControllerComponents(), mockEisConnectorProvider)
+  private val mockLrnExtractor         = mock[LRNExtractorServiceImpl]
+  private val controller               = new MessagesController(appConfig, stubControllerComponents(), mockEisConnectorProvider, mockLrnExtractor)
 
   override def beforeEach(): Unit =
     reset(appConfig)
@@ -74,6 +83,8 @@ class MessagesControllerSpec
 
     "return 200 if all required headers are present and in the correct format without an enforced auth token" in {
       when(appConfig.enforceAuthToken).thenReturn(false)
+      when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
+
       val fakeRequest = FakeRequest(
         "POST",
         routes.MessagesController.post("gb").url,
@@ -308,11 +319,16 @@ class MessagesControllerSpec
       )
     }
 
-    "return 403 if all required headers are present and in the expected format for LRN" in {
+    "return 403 if all required headers are present and in the expected format for duplicate LRN error" in {
       when(appConfig.enforceAuthToken).thenReturn(false)
-      val lrn = "LRN99999999"
+
+      val lrn = "DUPLRN99999999"
       val xmlRequestBody =
-        s"<n1:TraderChannelSubmission><ncts:CC015C><TransitOperation><LRN>$lrn</LRN></TransitOperation></ncts:CC015C></n1:TraderChannelSubmission>"
+        s"<TraderChannelSubmission><ncts:CC015C PhaseID='NCTS5.0' xmlns:ncts='http://ncts.dgtaxud.ec'><TransitOperation><LRN>DUPLRN99999999</LRN></TransitOperation></ncts:CC015C></TraderChannelSubmission>"
+
+      val requestBody = Source.single(ByteString(xmlRequestBody, StandardCharsets.UTF_8))
+      when(mockLrnExtractor.extractLRN(requestBody))
+        .thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber(lrn)))
 
       val fakeRequest = FakeRequest(
         "POST",
@@ -327,7 +343,7 @@ class MessagesControllerSpec
             HeaderNames.ACCEPT        -> "application/xml"
           )
         ),
-        Source.single(ByteString(xmlRequestBody, StandardCharsets.UTF_8))
+        requestBody
       )
       val result = controller.post("gb")(fakeRequest)
       status(result) shouldBe FORBIDDEN
@@ -374,6 +390,7 @@ class MessagesControllerSpec
     "implement stub logic when client not in allow list" in {
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
       when(appConfig.enableProxyMode).thenReturn(true)
+      when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
 
       when(
         mockEISConnector.post(any[Source[ByteString, _]])(
@@ -405,6 +422,7 @@ class MessagesControllerSpec
     "implement stub logic when enable proxy is false" in {
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
       when(appConfig.enableProxyMode).thenReturn(false)
+      when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
 
       when(
         mockEISConnector.post(any[Source[ByteString, _]])(
