@@ -17,6 +17,8 @@
 package uk.gov.hmrc.transitmovementseisstub.controllers
 
 import akka.stream.Materializer
+import akka.stream.scaladsl.BroadcastHub.sink
+import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import cats.data.EitherT
@@ -118,16 +120,22 @@ class MessagesController @Inject() (
     }
   }
 
-  private def validateHeader(header: String, validation: String => Option[String])(implicit request: Request[_]): EitherT[Future, String, Unit] =
+  private def validateHeader(header: String, validation: String => Option[String])(implicit
+    request: Request[Source[ByteString, _]]
+  ): EitherT[Future, String, Unit] =
     EitherT.fromEither[Future] {
       request.headers.get(header) match {
         case Some(value) =>
           validation(value)
-            .map(
-              result => s"Error in header $header: $result"
-            )
+            .map {
+              result =>
+                request.body.runWith(Sink.ignore)
+                s"Error in header $header: $result"
+            }
             .toLeft(())
-        case None => Left(s"Required header is missing: $header")
+        case None =>
+          request.body.runWith(Sink.ignore)
+          Left(s"Required header is missing: $header")
       }
     }
 
