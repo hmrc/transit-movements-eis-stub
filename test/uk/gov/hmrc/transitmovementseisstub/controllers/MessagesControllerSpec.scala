@@ -43,6 +43,7 @@ import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnector
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
+import uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice
 import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
 import uk.gov.hmrc.transitmovementseisstub.models.errors.ParserError
 import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorService
@@ -73,8 +74,10 @@ class MessagesControllerSpec
   private val mockLrnExtractor         = mock[LRNExtractorServiceImpl]
   private val controller               = new MessagesController(appConfig, stubControllerComponents(), mockEisConnectorProvider, mockLrnExtractor)
 
-  override def beforeEach(): Unit =
+  override def beforeEach(): Unit = {
     reset(appConfig)
+    reset(mockEisConnectorProvider)
+  }
 
   lazy val formattedDate       = s"${HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))} UTC"
   lazy val brokenFormattedDate = s"${HTTP_DATE_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))} Z"
@@ -87,7 +90,7 @@ class MessagesControllerSpec
 
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -100,7 +103,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe OK
     }
 
@@ -109,7 +112,7 @@ class MessagesControllerSpec
       when(appConfig.authToken).thenReturn("abc")
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -122,14 +125,14 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe OK
     }
 
     "return 403 if a required header is missing" in {
       when(appConfig.enforceAuthToken).thenReturn(false)
-      val fakeRequest = FakeRequest("POST", routes.MessagesController.post("gb").url)
-      val result      = controller.post("gb")(fakeRequest)
+      val fakeRequest = FakeRequest("POST", routes.MessagesController.post(CustomsOffice.Gb).url)
+      val result      = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -141,7 +144,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> "UUID.randomUUID().toString",
@@ -154,7 +157,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -166,7 +169,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -179,7 +182,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -197,7 +200,7 @@ class MessagesControllerSpec
         when(appConfig.enforceAuthToken).thenReturn(false)
         val fakeRequest = FakeRequest(
           "POST",
-          routes.MessagesController.post("gb").url,
+          routes.MessagesController.post(CustomsOffice.Gb).url,
           FakeHeaders(
             Seq(
               "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -210,7 +213,7 @@ class MessagesControllerSpec
           ),
           Source.empty[ByteString]
         )
-        val result = controller.post("gb")(fakeRequest)
+        val result = controller.post(CustomsOffice.Gb)(fakeRequest)
         status(result) shouldBe FORBIDDEN
         contentAsJson(result) shouldBe Json.obj(
           "code"    -> "FORBIDDEN",
@@ -222,7 +225,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -235,7 +238,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -248,7 +251,7 @@ class MessagesControllerSpec
       when(appConfig.authToken).thenReturn("easyas123")
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -261,7 +264,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -273,7 +276,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -286,7 +289,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -298,7 +301,7 @@ class MessagesControllerSpec
       when(appConfig.enforceAuthToken).thenReturn(false)
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -311,7 +314,7 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -332,7 +335,7 @@ class MessagesControllerSpec
 
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Correlation-Id"        -> UUID.randomUUID().toString,
@@ -345,7 +348,7 @@ class MessagesControllerSpec
         ),
         requestBody
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
       contentAsJson(result) shouldBe Json.obj(
         "code"    -> "FORBIDDEN",
@@ -355,9 +358,10 @@ class MessagesControllerSpec
 
     val mockEISConnector = mock[EISConnector]
 
-    "return 200 when client id is in allow list and enable proxy is true" in {
+    "return 200 when client id is in allow list and enable proxy for GB is true" in {
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
-      when(appConfig.enableProxyMode).thenReturn(true)
+      when(appConfig.internalAllowList).thenReturn(Seq.empty)
+      when(appConfig.enableProxyModeGb).thenReturn(true)
       when(mockEisConnectorProvider.gb) thenReturn mockEISConnector
 
       when(
@@ -369,7 +373,7 @@ class MessagesControllerSpec
 
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Client-Id"             -> "XYZ",
@@ -383,14 +387,17 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe OK
+      verify(mockEisConnectorProvider, times(0)).xi
+      verify(mockEisConnectorProvider, times(1)).gb
     }
 
     "implement stub logic when client not in allow list" in {
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
-      when(appConfig.enableProxyMode).thenReturn(true)
       when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
+      when(appConfig.internalAllowList).thenReturn(Seq.empty)
+      when(appConfig.enableProxyModeGb).thenReturn(true)
 
       when(
         mockEISConnector.post(any[Source[ByteString, _]])(
@@ -401,7 +408,7 @@ class MessagesControllerSpec
 
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Client-Id"             -> "notInAllowList",
@@ -415,14 +422,18 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe OK
+      verify(mockEisConnectorProvider, times(0)).xi
+      verify(mockEisConnectorProvider, times(0)).gb
     }
 
     "implement stub logic when enable proxy is false" in {
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
-      when(appConfig.enableProxyMode).thenReturn(false)
       when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
+      when(appConfig.internalAllowList).thenReturn(Seq.empty)
+      when(appConfig.enableProxyModeGb).thenReturn(false)
+      when(appConfig.enableProxyModeXi).thenReturn(true)
 
       when(
         mockEISConnector.post(any[Source[ByteString, _]])(
@@ -433,7 +444,7 @@ class MessagesControllerSpec
 
       val fakeRequest = FakeRequest(
         "POST",
-        routes.MessagesController.post("gb").url,
+        routes.MessagesController.post(CustomsOffice.Gb).url,
         FakeHeaders(
           Seq(
             "X-Client-Id"             -> "XYZ",
@@ -447,8 +458,82 @@ class MessagesControllerSpec
         ),
         Source.empty[ByteString]
       )
-      val result = controller.post("gb")(fakeRequest)
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe OK
+      verify(mockEisConnectorProvider, times(0)).xi
+      verify(mockEisConnectorProvider, times(0)).gb
     }
+
+    "return 200 when client id is in allow list and enable proxy for XI is true" in {
+      when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
+      when(appConfig.internalAllowList).thenReturn(Seq.empty)
+      when(appConfig.enableProxyModeGb).thenReturn(false)
+      when(appConfig.enableProxyModeXi).thenReturn(true)
+      when(mockEisConnectorProvider.xi) thenReturn mockEISConnector
+
+      when(
+        mockEISConnector.post(any[Source[ByteString, _]])(
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(Future.successful(Right(())))
+
+      val fakeRequest = FakeRequest(
+        "POST",
+        routes.MessagesController.post(CustomsOffice.Xi).url,
+        FakeHeaders(
+          Seq(
+            "X-Client-Id"             -> "XYZ",
+            "X-Correlation-Id"        -> UUID.randomUUID().toString,
+            "X-Conversation-Id"       -> UUID.randomUUID().toString,
+            HeaderNames.DATE          -> formattedDate,
+            HeaderNames.ACCEPT        -> "application/xml",
+            HeaderNames.AUTHORIZATION -> "Bearer abc",
+            HeaderNames.CONTENT_TYPE  -> "application/xml"
+          )
+        ),
+        Source.empty[ByteString]
+      )
+      val result = controller.post(CustomsOffice.Xi)(fakeRequest)
+      status(result) shouldBe OK
+      verify(mockEisConnectorProvider, times(1)).xi
+      verify(mockEisConnectorProvider, times(0)).gb
+    }
+
+    "return 200 when client id is in internal allow list and enable proxy for GB is false" in {
+      when(appConfig.internalAllowList).thenReturn(Seq("XYZ"))
+      when(appConfig.clientAllowList).thenReturn(Seq())
+      when(appConfig.enableProxyModeGb).thenReturn(false)
+      when(mockEisConnectorProvider.gb) thenReturn mockEISConnector
+
+      when(
+        mockEISConnector.post(any[Source[ByteString, _]])(
+          any[HeaderCarrier]
+        )
+      )
+        .thenReturn(Future.successful(Right(())))
+
+      val fakeRequest = FakeRequest(
+        "POST",
+        routes.MessagesController.post(CustomsOffice.Gb).url,
+        FakeHeaders(
+          Seq(
+            "X-Client-Id"             -> "XYZ",
+            "X-Correlation-Id"        -> UUID.randomUUID().toString,
+            "X-Conversation-Id"       -> UUID.randomUUID().toString,
+            HeaderNames.DATE          -> formattedDate,
+            HeaderNames.ACCEPT        -> "application/xml",
+            HeaderNames.AUTHORIZATION -> "Bearer abc",
+            HeaderNames.CONTENT_TYPE  -> "application/xml"
+          )
+        ),
+        Source.empty[ByteString]
+      )
+      val result = controller.post(CustomsOffice.Gb)(fakeRequest)
+      status(result) shouldBe OK
+      verify(mockEisConnectorProvider, times(0)).xi
+      verify(mockEisConnectorProvider, times(1)).gb
+    }
+
   }
 }
