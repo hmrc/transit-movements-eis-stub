@@ -17,9 +17,11 @@
 package uk.gov.hmrc.transitmovementseisstub.controllers
 
 import akka.stream.Materializer
+import akka.stream.scaladsl.BroadcastHub.sink
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import cats.data.EitherT
 import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes
@@ -27,6 +29,7 @@ import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Request
+import play.api.mvc.Result
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.{HeaderNames => HMRCHeaderNames}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -35,7 +38,9 @@ import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
 import uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice
+import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorService
 
+import java.nio.charset.StandardCharsets
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -44,7 +49,12 @@ import scala.concurrent.Future
 import scala.util.Success
 import scala.util.Try
 
-class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponents, eisConnectorProvider: EISConnectorProvider)(implicit
+class MessagesController @Inject() (
+  appConfig: AppConfig,
+  cc: ControllerComponents,
+  eisConnectorProvider: EISConnectorProvider,
+  lrnExtractorService: LRNExtractorService
+)(implicit
   val materializer: Materializer
 ) extends BackendController(cc)
     with StreamingParsers
@@ -54,6 +64,7 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
   private val HTTP_DATE_FORMATTER  = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
   private val UUID_PATTERN         = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
   private val BEARER_TOKEN_PATTERN = "^Bearer (\\S+)$".r
+  private lazy val lrnRegexPattern = """^DUPLRN\d*$""".r
 
   def routeToEIScheck(client: String, customsOffice: CustomsOffice): Boolean =
     (appConfig.clientAllowList.contains(client) && customsOffice.proxyEnabled(appConfig)) || appConfig.internalAllowList.contains(client)
@@ -61,7 +72,6 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
   def post(customsOffice: CustomsOffice): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
     implicit request: Request[Source[ByteString, _]] =>
       implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
-
       hc.headers(Seq("X-Client-Id")) match {
         case Seq(clientHeaderAndValue) if routeToEIScheck(clientHeaderAndValue._2, customsOffice) =>
           routeToEIS(customsOffice)
@@ -75,9 +85,7 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
       routeToStub
   }
 
-  private def routeToStub(implicit request: Request[Source[ByteString, _]]) = {
-    request.body.runWith(Sink.ignore)
-
+  private def routeToStub(implicit request: Request[Source[ByteString, _]]) =
     (for {
       _ <- validateHeader("X-Correlation-Id", isUuid)
       _ <- validateHeader("X-Conversation-Id", isUuid)
@@ -85,18 +93,19 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
       _ <- validateHeader(HeaderNames.ACCEPT, isXml)
       _ <- validateHeader(HeaderNames.AUTHORIZATION, isBearerToken)
       _ <- validateHeader(HeaderNames.DATE, isDate)
-    } yield ()) match {
-      case Right(()) => Future.successful(Ok)
-      case Left(error) =>
-        logger.error(s"""Request failed with the following error:
-                 |$error
-                 |
-                 |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
-                 |""".stripMargin)
-        Future.successful(Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error")))
-    }
-
-  }
+      _ <- validateLRN(request.body)
+    } yield ()).fold[Result](
+      {
+        error =>
+          logger.error(s"""Request failed with the following error:
+                       |$error
+                       |
+                       |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
+                       |""".stripMargin)
+          Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error"))
+      },
+      _ => Ok
+    )
 
   private def routeToEIS(customsOffice: CustomsOffice)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
     val connector = (customsOffice: @unchecked) match {
@@ -111,15 +120,23 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
     }
   }
 
-  private def validateHeader(header: String, validation: String => Option[String])(implicit request: Request[_]): Either[String, Unit] =
-    request.headers.get(header) match {
-      case Some(value) =>
-        validation(value)
-          .map(
-            result => s"Error in header $header: $result"
-          )
-          .toLeft(())
-      case None => Left(s"Required header is missing: $header")
+  private def validateHeader(header: String, validation: String => Option[String])(implicit
+    request: Request[Source[ByteString, _]]
+  ): EitherT[Future, String, Unit] =
+    EitherT.fromEither[Future] {
+      request.headers.get(header) match {
+        case Some(value) =>
+          validation(value)
+            .map {
+              result =>
+                request.body.runWith(Sink.ignore)
+                s"Error in header $header: $result"
+            }
+            .toLeft(())
+        case None =>
+          request.body.runWith(Sink.ignore)
+          Left(s"Required header is missing: $header")
+      }
     }
 
   private def isUuid(value: String): Option[String] = if (UUID_PATTERN.matches(value)) None else Some(s"$value is not a UUID")
@@ -145,5 +162,19 @@ class MessagesController @Inject() (appConfig: AppConfig, cc: ControllerComponen
       case Some(Success(_)) => None
       case _                => Some(s"Expected date in RFC 7231 format, instead got $value")
     }
+
+  private def validateLRN(requestBody: Source[ByteString, _]): EitherT[Future, String, Unit] = EitherT {
+    (for {
+      lrn <- lrnExtractorService.extractLRN(requestBody)
+    } yield lrn).fold(
+      _ => Right(()),
+      lrn =>
+        if (lrnRegexPattern.matches(lrn.value)) {
+          Left(s"The supplied LRN: ${lrn.value} has already been used by submitter: messageSender")
+        } else {
+          Right(())
+        }
+    )
+  }
 
 }
