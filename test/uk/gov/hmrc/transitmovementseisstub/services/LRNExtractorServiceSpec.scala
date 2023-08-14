@@ -16,27 +16,23 @@
 
 package uk.gov.hmrc.transitmovementseisstub.services
 
-import akka.stream.scaladsl.Sink
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.time.Seconds
 import org.scalatest.time.Span
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import uk.gov.hmrc.transitmovementseisstub.base.StreamTestHelpers
 import uk.gov.hmrc.transitmovementseisstub.base.TestActorSystem
 import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
+import uk.gov.hmrc.transitmovementseisstub.models.MessageSender
 import uk.gov.hmrc.transitmovementseisstub.models.errors.ParserError
 
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.xml.NodeSeq
 
 class LRNExtractorServiceSpec extends AnyFreeSpec with ScalaFutures with Matchers with TestActorSystem with StreamTestHelpers {
-
-  private val testDate      = OffsetDateTime.now(ZoneOffset.UTC)
-  private val UTCDateString = testDate.toLocalDateTime.format(DateTimeFormatter.ISO_DATE_TIME)
 
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(6, Seconds))
@@ -44,6 +40,7 @@ class LRNExtractorServiceSpec extends AnyFreeSpec with ScalaFutures with Matcher
   val validLRN: NodeSeq =
     <TraderChannelSubmission>
     <CC015C>
+      <messageSender>abc</messageSender>
       <TransitOperation>
         <LRN>DUPLRN122233335</LRN>
       </TransitOperation>
@@ -52,6 +49,7 @@ class LRNExtractorServiceSpec extends AnyFreeSpec with ScalaFutures with Matcher
 
   val invalidLRN: NodeSeq =
     <TraderChannelSubmission>
+      <messageSender>abc</messageSender>
       <CC015C>
         <TransitOperation>
         </TransitOperation>
@@ -61,6 +59,7 @@ class LRNExtractorServiceSpec extends AnyFreeSpec with ScalaFutures with Matcher
   val tooManyLRN: NodeSeq =
     <TraderChannelSubmission>
       <CC015C>
+        <messageSender>abc</messageSender>
         <TransitOperation>
           <LRN>DUPLRN122233335</LRN>
           <LRN>DUPLRN122233335</LRN>
@@ -97,7 +96,7 @@ class LRNExtractorServiceSpec extends AnyFreeSpec with ScalaFutures with Matcher
       val result = service.extractLRN(source)
 
       whenReady(result.value) {
-        _ mustBe Right(LocalReferenceNumber("DUPLRN122233335"))
+        _ mustBe Right((LocalReferenceNumber("DUPLRN122233335"), MessageSender("abc")))
       }
     }
   }
