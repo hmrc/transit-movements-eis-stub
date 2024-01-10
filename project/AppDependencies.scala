@@ -1,6 +1,4 @@
-import play.core.PlayVersion
 import play.sbt.PlayImport._
-import sbt.Keys.libraryDependencies
 import sbt._
 
 object AppDependencies {
@@ -9,19 +7,16 @@ object AppDependencies {
   private val catsRetryVersion = "3.1.0"
 
   val compile = Seq(
-    "uk.gov.hmrc" %% "bootstrap-backend-play-28" % "7.12.0",
+    "uk.gov.hmrc" %% "bootstrap-backend-play-30" % "8.4.0",
     "org.typelevel" %% "cats-core" % catsVersion,
     "com.github.cb372" %% "cats-retry" % catsRetryVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % PlayVersion.akkaVersion,
-    "com.lightbend.akka" %% "akka-stream-alpakka-xml" % "3.0.4"
+    "org.apache.pekko" %% "pekko-slf4j" % "1.0.1",
+    "org.apache.pekko" %% "pekko-connectors-xml" % "1.0.1"
   )
 
   val test = Seq(
-    "uk.gov.hmrc"           %% "bootstrap-test-play-28"  % "7.12.0",
-    "org.mockito"           %% "mockito-scala-scalatest" % "1.17.12",
-    "org.mockito"            % "mockito-core"            % "3.12.4",
-    "org.scalatestplus"     %% "scalacheck-1-15"         % "3.2.11.0",
-    "com.vladsch.flexmark"   % "flexmark-all"            % "0.62.2",
-    "com.github.tomakehurst" % "wiremock-standalone"     % "2.27.2"
-  ).map(_ % "test, it")
+    "uk.gov.hmrc"           %% "bootstrap-test-play-30"  % "8.4.0",
+    "org.mockito"           %% "mockito-scala-scalatest" % "1.17.14",
+    "org.scalatestplus"     %% "scalacheck-1-15"         % "3.2.11.0"
+  ).map(_ % Test)
 }

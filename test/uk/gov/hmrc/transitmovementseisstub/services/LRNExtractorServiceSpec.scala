@@ -16,13 +16,11 @@
 
 package uk.gov.hmrc.transitmovementseisstub.services
 
-import akka.stream.scaladsl.Sink
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.time.Seconds
 import org.scalatest.time.Span
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import uk.gov.hmrc.transitmovementseisstub.base.StreamTestHelpers
 import uk.gov.hmrc.transitmovementseisstub.base.TestActorSystem
 import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber

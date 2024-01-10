@@ -16,10 +16,10 @@
 
 package uk.gov.hmrc.transitmovementseisstub.controllers
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import cats.data.EitherT
 import cats.implicits.catsStdInstancesForFuture
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar
 import org.scalacheck.Gen
@@ -46,7 +46,6 @@ import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
 import uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice
 import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
 import uk.gov.hmrc.transitmovementseisstub.models.errors.ParserError
-import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorService
 import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorServiceImpl
 
 import java.nio.charset.StandardCharsets
@@ -57,7 +56,6 @@ import java.util.Locale
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.xml.NodeSeq
 
 class MessagesControllerSpec
     extends AnyWordSpec

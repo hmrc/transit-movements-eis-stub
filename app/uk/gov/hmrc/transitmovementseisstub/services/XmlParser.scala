@@ -16,10 +16,10 @@
 
 package uk.gov.hmrc.transitmovementseisstub.services
 
-import akka.NotUsed
-import akka.stream.alpakka.xml.ParseEvent
-import akka.stream.alpakka.xml.scaladsl.XmlParsing
-import akka.stream.scaladsl.Flow
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.connectors.xml.ParseEvent
+import org.apache.pekko.stream.connectors.xml.scaladsl.XmlParsing
+import org.apache.pekko.stream.scaladsl.Flow
 import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
 
 object XmlParser extends XmlParsingServiceHelpers {
