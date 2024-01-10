@@ -59,7 +59,6 @@ import scala.concurrent.Future
 
 import scala.xml.XML
 
-
 class MessagesControllerSpec
     extends AnyWordSpec
     with Matchers

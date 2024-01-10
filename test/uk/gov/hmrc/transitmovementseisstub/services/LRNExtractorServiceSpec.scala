@@ -19,9 +19,12 @@ package uk.gov.hmrc.transitmovementseisstub.services
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import org.scalatest.time.{Seconds, Span}
-import uk.gov.hmrc.transitmovementseisstub.base.{StreamTestHelpers, TestActorSystem}
-import uk.gov.hmrc.transitmovementseisstub.models.{LocalReferenceNumber, MessageSender}
+import org.scalatest.time.Seconds
+import org.scalatest.time.Span
+import uk.gov.hmrc.transitmovementseisstub.base.StreamTestHelpers
+import uk.gov.hmrc.transitmovementseisstub.base.TestActorSystem
+import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
+import uk.gov.hmrc.transitmovementseisstub.models.MessageSender
 import uk.gov.hmrc.transitmovementseisstub.models.errors.ParserError
 
 import scala.concurrent.ExecutionContext.Implicits.global
