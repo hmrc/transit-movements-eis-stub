@@ -24,7 +24,7 @@ import org.apache.pekko.util.ByteString
 import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes
-import play.api.libs.json.Json
+import play.api.http.Writeable
 import play.api.mvc.Action
 import play.api.mvc.ControllerComponents
 import play.api.mvc.Request
@@ -37,6 +37,11 @@ import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.controllers.stream.StreamingParsers
 import uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice
+import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
+import uk.gov.hmrc.transitmovementseisstub.models.MessageSender
+import uk.gov.hmrc.transitmovementseisstub.models.errors.HeaderError
+import uk.gov.hmrc.transitmovementseisstub.models.errors.StubError
+import uk.gov.hmrc.transitmovementseisstub.models.errors.XMLError
 import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorService
 
 import java.time.ZoneOffset
@@ -96,11 +101,14 @@ class MessagesController @Inject() (
       {
         error =>
           logger.error(s"""Request failed with the following error:
-                       |$error
+                       |${error.errorMessage}
                        |
                        |Request ID: ${request.headers.get(HMRCHeaderNames.xRequestId).getOrElse("unknown")}
                        |""".stripMargin)
-          Status(FORBIDDEN)(Json.obj("code" -> "FORBIDDEN", "message" -> s"Error in request: $error"))
+          error match {
+            case _: HeaderError => Status(FORBIDDEN) // EIS does not send a message ordinarily.
+            case x: XMLError    => Status(FORBIDDEN)(x.errorMessage)(Writeable(ByteString.apply, Some(MimeTypes.XML)))
+          }
       },
       _ => Ok
     )
@@ -120,7 +128,7 @@ class MessagesController @Inject() (
 
   private def validateHeader(header: String, validation: String => Option[String])(implicit
     request: Request[Source[ByteString, _]]
-  ): EitherT[Future, String, Unit] =
+  ): EitherT[Future, StubError, Unit] =
     EitherT.fromEither[Future] {
       request.headers.get(header) match {
         case Some(value) =>
@@ -128,12 +136,12 @@ class MessagesController @Inject() (
             .map {
               result =>
                 request.body.runWith(Sink.ignore)
-                s"Error in header $header: $result"
+                HeaderError(s"Error in header $header: $result")
             }
             .toLeft(())
         case None =>
           request.body.runWith(Sink.ignore)
-          Left(s"Required header is missing: $header")
+          Left(HeaderError(s"Required header is missing: $header"))
       }
     }
 
@@ -161,18 +169,33 @@ class MessagesController @Inject() (
       case _                => Some(s"Expected date in RFC 7231 format, instead got $value")
     }
 
-  private def validateLRN(requestBody: Source[ByteString, _]): EitherT[Future, String, Unit] = EitherT {
+  private def validateLRN(requestBody: Source[ByteString, _]): EitherT[Future, StubError, Unit] = EitherT {
     (for {
       lrn <- lrnExtractorService.extractLRN(requestBody)
     } yield lrn).fold(
       _ => Right(()),
-      lrn =>
-        if (lrnRegexPattern.matches(lrn.value)) {
-          Left(s"The supplied LRN: ${lrn.value} has already been used by submitter: messageSender")
+      lrnAndMessageSender =>
+        if (lrnRegexPattern.matches(lrnAndMessageSender._1.value)) {
+          createErrorXml(lrnAndMessageSender._1, lrnAndMessageSender._2)
         } else {
           Right(())
         }
     )
   }
+
+  private def createErrorXml(lrn: LocalReferenceNumber, messageSender: MessageSender): Either[StubError, Unit] =
+    Left(XMLError(s"""<?xml version="1.0" encoding="UTF-8"?>
+          |<lrnDuplicationErrorDetail xmlns:eis="http://www.hmrc.gsi.gov.uk/eis">
+          |    <timestamp>Fri, 03 Jul 2020 11:20:25 UTC</timestamp>
+          |    <correlationId>00000000-0000-0000-0000-000000000000</correlationId>
+          |    <errorCode>400</errorCode>
+          |    <errorMessage>The supplied LRN: ${lrn.value} has already been used by submitter: ${messageSender.value}</errorMessage>
+          |    <source>ERMIS</source>
+          |    <sourceFaultDetail>
+          |        <submitter>${messageSender.value}</submitter>
+          |        <lrn>${lrn.value}</lrn>
+          |    </sourceFaultDetail>
+          |</lrnDuplicationErrorDetail>
+          |""".stripMargin))
 
 }

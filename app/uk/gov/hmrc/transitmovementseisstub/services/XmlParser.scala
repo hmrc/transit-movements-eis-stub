@@ -21,6 +21,7 @@ import org.apache.pekko.stream.connectors.xml.ParseEvent
 import org.apache.pekko.stream.connectors.xml.scaladsl.XmlParsing
 import org.apache.pekko.stream.scaladsl.Flow
 import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
+import uk.gov.hmrc.transitmovementseisstub.models.MessageSender
 
 object XmlParser extends XmlParsingServiceHelpers {
 
@@ -33,5 +34,15 @@ object XmlParser extends XmlParsingServiceHelpers {
         case element if element.getTextContent.nonEmpty => LocalReferenceNumber(element.getTextContent)
       }
       .single("LRN")
+
+  def messageSenderExtractor(
+    rootNode: String
+  ): Flow[ParseEvent, ParseResult[MessageSender], NotUsed] =
+    XmlParsing
+      .subtree(rootNode :: "CC015C" :: "messageSender" :: Nil)
+      .collect {
+        case element if element.getTextContent.nonEmpty => MessageSender(element.getTextContent)
+      }
+      .single("messageSender")
 
 }

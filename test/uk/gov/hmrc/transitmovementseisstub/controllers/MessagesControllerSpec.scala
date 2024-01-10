@@ -30,10 +30,9 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import play.api.http.HeaderNames
 import play.api.http.Status.FORBIDDEN
 import play.api.http.Status.OK
-import play.api.libs.json.Json
 import play.api.test.FakeHeaders
 import play.api.test.FakeRequest
-import play.api.test.Helpers.contentAsJson
+import play.api.test.Helpers.contentAsString
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.Helpers.status
 import play.api.test.Helpers.stubControllerComponents
@@ -45,6 +44,7 @@ import uk.gov.hmrc.transitmovementseisstub.connectors.EISConnectorProvider
 import uk.gov.hmrc.transitmovementseisstub.connectors.errors.RoutingError
 import uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice
 import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
+import uk.gov.hmrc.transitmovementseisstub.models.MessageSender
 import uk.gov.hmrc.transitmovementseisstub.models.errors.ParserError
 import uk.gov.hmrc.transitmovementseisstub.services.LRNExtractorServiceImpl
 
@@ -56,6 +56,9 @@ import java.util.Locale
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+
+import scala.xml.XML
+
 
 class MessagesControllerSpec
     extends AnyWordSpec
@@ -84,7 +87,8 @@ class MessagesControllerSpec
 
     "return 200 if all required headers are present and in the correct format without an enforced auth token" in {
       when(appConfig.enforceAuthToken).thenReturn(false)
-      when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
+      when(mockLrnExtractor.extractLRN(Source.empty[ByteString]))
+        .thenReturn(EitherT.rightT[Future, ParserError]((LocalReferenceNumber("1234567"), MessageSender("abc"))))
 
       val fakeRequest = FakeRequest(
         "POST",
@@ -132,10 +136,6 @@ class MessagesControllerSpec
       val fakeRequest = FakeRequest("POST", routes.MessagesController.post(CustomsOffice.Gb).url)
       val result      = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Required header is missing: X-Correlation-Id"
-      )
     }
 
     "return 403 if all required headers are present and in the correct format except X-Correlation-Id" in {
@@ -157,10 +157,6 @@ class MessagesControllerSpec
       )
       val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Error in header X-Correlation-Id: UUID.randomUUID().toString is not a UUID"
-      )
     }
 
     "return 403 if all required headers are present and in the correct format except X-Conversation-Id" in {
@@ -182,10 +178,6 @@ class MessagesControllerSpec
       )
       val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Error in header X-Conversation-Id: UUID.randomUUID().toString is not a UUID"
-      )
     }
 
     "return 403 if all required headers are present and in the correct format except Date" in forAll(
@@ -213,10 +205,6 @@ class MessagesControllerSpec
         )
         val result = controller.post(CustomsOffice.Gb)(fakeRequest)
         status(result) shouldBe FORBIDDEN
-        contentAsJson(result) shouldBe Json.obj(
-          "code"    -> "FORBIDDEN",
-          "message" -> s"Error in request: Error in header Date: Expected date in RFC 7231 format, instead got $date"
-        )
     }
 
     "return 403 if all required headers are present and in the correct format except Authorization" in {
@@ -238,10 +226,6 @@ class MessagesControllerSpec
       )
       val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Error in header Authorization: Bearer token not in expected format"
-      )
     }
 
     "return 403 if all required headers are present and in the correct format except Authorization when ensuring the token is specific and does not match" in {
@@ -264,10 +248,6 @@ class MessagesControllerSpec
       )
       val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Error in header Authorization: Bearer token does not match expected token"
-      )
     }
 
     "return 403 if all required headers are present and in the correct format except Content Type" in {
@@ -289,10 +269,6 @@ class MessagesControllerSpec
       )
       val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Error in header Content-Type: Expected application/xml, got application/json"
-      )
     }
 
     "return 403 if all required headers are present and in the correct format except Accept" in {
@@ -314,10 +290,6 @@ class MessagesControllerSpec
       )
       val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> "Error in request: Error in header Accept: Expected application/xml, got application/json"
-      )
     }
 
     "return 403 if all required headers are present and in the expected format for duplicate LRN error" in {
@@ -325,11 +297,11 @@ class MessagesControllerSpec
 
       val lrn = "DUPLRN99999999"
       val xmlRequestBody =
-        s"<TraderChannelSubmission><ncts:CC015C PhaseID='NCTS5.0' xmlns:ncts='http://ncts.dgtaxud.ec'><TransitOperation><LRN>DUPLRN99999999</LRN></TransitOperation></ncts:CC015C></TraderChannelSubmission>"
+        s"<TraderChannelSubmission><ncts:CC015C PhaseID='NCTS5.0' xmlns:ncts='http://ncts.dgtaxud.ec'><messageSender>messagesender</messageSender><TransitOperation><LRN>DUPLRN99999999</LRN></TransitOperation></ncts:CC015C></TraderChannelSubmission>"
 
       val requestBody = Source.single(ByteString(xmlRequestBody, StandardCharsets.UTF_8))
       when(mockLrnExtractor.extractLRN(requestBody))
-        .thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber(lrn)))
+        .thenReturn(EitherT.rightT[Future, ParserError]((LocalReferenceNumber(lrn), MessageSender("messagesender"))))
 
       val fakeRequest = FakeRequest(
         "POST",
@@ -348,10 +320,9 @@ class MessagesControllerSpec
       )
       val result = controller.post(CustomsOffice.Gb)(fakeRequest)
       status(result) shouldBe FORBIDDEN
-      contentAsJson(result) shouldBe Json.obj(
-        "code"    -> "FORBIDDEN",
-        "message" -> s"Error in request: The supplied LRN: $lrn has already been used by submitter: messageSender"
-      )
+      val resultXml = XML.loadString(contentAsString(result))
+      (resultXml \ "sourceFaultDetail" \ "lrn").head.text shouldBe "DUPLRN99999999"
+      (resultXml \ "sourceFaultDetail" \ "submitter").head.text shouldBe "messagesender"
     }
 
     val mockEISConnector = mock[EISConnector]
@@ -393,7 +364,8 @@ class MessagesControllerSpec
 
     "implement stub logic when client not in allow list" in {
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
-      when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
+      when(mockLrnExtractor.extractLRN(Source.empty[ByteString]))
+        .thenReturn(EitherT.rightT[Future, ParserError]((LocalReferenceNumber("1234567"), MessageSender("abc"))))
       when(appConfig.internalAllowList).thenReturn(Seq.empty)
       when(appConfig.enableProxyModeGb).thenReturn(true)
 
@@ -428,7 +400,8 @@ class MessagesControllerSpec
 
     "implement stub logic when enable proxy is false" in {
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
-      when(mockLrnExtractor.extractLRN(Source.empty[ByteString])).thenReturn(EitherT.rightT[Future, ParserError](LocalReferenceNumber("1234567")))
+      when(mockLrnExtractor.extractLRN(Source.empty[ByteString]))
+        .thenReturn(EitherT.rightT[Future, ParserError]((LocalReferenceNumber("1234567"), MessageSender("abc"))))
       when(appConfig.internalAllowList).thenReturn(Seq.empty)
       when(appConfig.enableProxyModeGb).thenReturn(false)
       when(appConfig.enableProxyModeXi).thenReturn(true)
