@@ -16,9 +16,9 @@
 
 package uk.gov.hmrc.transitmovementseisstub.controllers.stream
 
-import akka.stream.Materializer
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import play.api.libs.streams.Accumulator
 import play.api.mvc.BaseControllerHelpers
 import play.api.mvc.BodyParser

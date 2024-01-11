@@ -16,10 +16,10 @@
 
 package uk.gov.hmrc.transitmovementseisstub.controllers
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import cats.data.EitherT
 import cats.implicits.catsStdInstancesForFuture
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar
 import org.scalacheck.Gen
@@ -56,6 +56,7 @@ import java.util.Locale
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+
 import scala.xml.XML
 
 class MessagesControllerSpec

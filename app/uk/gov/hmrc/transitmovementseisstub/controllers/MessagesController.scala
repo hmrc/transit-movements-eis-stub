@@ -16,11 +16,11 @@
 
 package uk.gov.hmrc.transitmovementseisstub.controllers
 
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import cats.data.EitherT
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.Sink
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes

@@ -16,16 +16,17 @@
 
 package uk.gov.hmrc.transitmovementseisstub.services
 
-import akka.stream.FlowShape
-import akka.stream.Materializer
-import akka.stream.SinkShape
-import akka.stream.alpakka.xml.ParseEvent
-import akka.stream.alpakka.xml.scaladsl.XmlParsing
-import akka.stream.scaladsl.Broadcast
-import akka.stream.scaladsl.GraphDSL
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import org.apache.pekko.stream.FlowShape
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.SinkShape
+import org.apache.pekko.stream.connectors.xml.ParseEvent
+import org.apache.pekko.stream.connectors.xml.scaladsl.XmlParsing
+import org.apache.pekko.stream.scaladsl.GraphDSL
+import org.apache.pekko.stream.scaladsl.Sink
+import org.apache.pekko.stream.scaladsl.Broadcast
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
+
 import cats.data.EitherT
 import com.google.inject.ImplementedBy
 import com.google.inject.Inject

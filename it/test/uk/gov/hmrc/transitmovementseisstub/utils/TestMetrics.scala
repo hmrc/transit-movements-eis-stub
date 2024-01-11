@@ -16,15 +16,9 @@
 
 package uk.gov.hmrc.transitmovementseisstub.utils
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import org.scalatest.Suite
+import com.codahale.metrics.MetricRegistry
+import uk.gov.hmrc.play.bootstrap.metrics.Metrics
 
-object TestActorSystem {
-  val system: ActorSystem = ActorSystem("test")
-}
-
-trait TestActorSystem { self: Suite =>
-  implicit val system: ActorSystem        = TestActorSystem.system
-  implicit val materializer: Materializer = Materializer(TestActorSystem.system)
+class TestMetrics extends Metrics {
+  override def defaultRegistry: MetricRegistry = new MetricRegistry
 }

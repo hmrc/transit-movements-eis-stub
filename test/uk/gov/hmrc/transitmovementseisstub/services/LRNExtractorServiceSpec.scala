@@ -27,8 +27,6 @@ import uk.gov.hmrc.transitmovementseisstub.models.LocalReferenceNumber
 import uk.gov.hmrc.transitmovementseisstub.models.MessageSender
 import uk.gov.hmrc.transitmovementseisstub.models.errors.ParserError
 
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.xml.NodeSeq
 
