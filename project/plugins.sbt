@@ -5,7 +5,7 @@ resolvers += Resolver.typesafeRepo("releases")
 ThisBuild / libraryDependencySchemes ++= Seq(
   "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 )
-addSbtPlugin("uk.gov.hmrc"       % "sbt-auto-build"     % "3.18.0")
+addSbtPlugin("uk.gov.hmrc"       % "sbt-auto-build"     % "3.24.0")
 addSbtPlugin("uk.gov.hmrc"       % "sbt-distributables" % "2.4.0")
 addSbtPlugin("org.playframework" % "sbt-plugin"         % "3.0.1")
 addSbtPlugin("org.scoverage"     % "sbt-scoverage"      % "2.0.9")
