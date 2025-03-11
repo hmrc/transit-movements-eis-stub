@@ -16,22 +16,23 @@
 
 package uk.gov.hmrc.transitmovementseisstub.connectors
 
-import org.apache.pekko.stream.scaladsl.Source
-import org.apache.pekko.util.ByteString
-import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.client.WireMock.*
 import com.github.tomakehurst.wiremock.matching.AnythingPattern
 import com.github.tomakehurst.wiremock.matching.StringValuePattern
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import org.mockito.ArgumentMatchers
-import org.mockito.MockitoSugar
+import org.mockito.Mockito.when
 import org.scalacheck.Gen
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.mockito.MockitoSugar.mock
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import play.api.http.MimeTypes
-import play.api.test.Helpers._
+import play.api.test.Helpers.*
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.test.HttpClientV2Support
@@ -49,6 +50,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class EISConnectorSpec
@@ -57,7 +59,6 @@ class EISConnectorSpec
     with Matchers
     with WiremockSuite
     with ScalaFutures
-    with MockitoSugar
     with IntegrationPatience
     with ScalaCheckPropertyChecks
     with TableDrivenPropertyChecks
@@ -83,7 +84,7 @@ class EISConnectorSpec
 
   private lazy val correlationId  = UUID.randomUUID()
   private lazy val conversationId = UUID.randomUUID()
-  private lazy val date           = s"${DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC).format(Instant.now(clock))} UTC"
+  private lazy val date = s"${DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC).format(Instant.now(clock))} UTC"
 
   def stub(codeToReturn: Int, body: String = "") =
     server.stubFor(
@@ -99,7 +100,7 @@ class EISConnectorSpec
         .willReturn(aResponse().withStatus(codeToReturn).withBody(body))
     )
 
-  implicit val hc = HeaderCarrier(
+  implicit val hc: HeaderCarrier = HeaderCarrier(
     authorization = Some(uk.gov.hmrc.http.Authorization("Bearer bearertokenhereGB")),
     otherHeaders = Seq(
       "X-Correlation-Id"  -> correlationId.toString,

@@ -23,5 +23,7 @@ object AppDependencies {
     "org.scalatestplus" %% "mockito-5-12"            % "3.2.19.0",
     "org.scalacheck"    %% "scalacheck"              % "1.18.1",
     "org.scalatestplus" %% "scalacheck-1-18"         % "3.2.19.0",
+    "org.apache.pekko" %% "pekko-serialization-jackson" % "1.1.3",
+    "org.apache.pekko" %% "pekko-actor-typed" % "1.1.3"
   ).map(_ % Test)
 }
