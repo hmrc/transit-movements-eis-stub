@@ -4,7 +4,7 @@ import uk.gov.hmrc.DefaultBuildSettings
 val appName = "transit-movements-eis-stub"
 
 ThisBuild / majorVersion := 0
-ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / scalaVersion := "3.6.4"
 
 lazy val microservice = Project(appName, file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
@@ -15,7 +15,9 @@ lazy val microservice = Project(appName, file("."))
       "uk.gov.hmrc.transitmovementseisstub.models.CustomsOffice"
     ),
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
-    scalacOptions += "-Wconf:src=routes/.*:s"
+    scalacOptions += "-Wconf:src=routes/.*:s",
+    scalacOptions += "-Wconf:msg=Flag.*repeatedly:s",
+    scalacOptions += "-Xfatal-warnings"
   )
   .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)

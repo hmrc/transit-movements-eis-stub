@@ -21,11 +21,15 @@ import cats.implicits.catsStdInstancesForFuture
 import org.apache.pekko.stream.scaladsl.Source
 import org.apache.pekko.util.ByteString
 import org.mockito.ArgumentMatchers.any
-import org.mockito.MockitoSugar
+import org.mockito.Mockito.reset
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.when
 import org.scalacheck.Gen
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.mockito.MockitoSugar.mock
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import play.api.http.HeaderNames
 import play.api.http.Status.FORBIDDEN
@@ -56,16 +60,9 @@ import java.util.Locale
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-
 import scala.xml.XML
 
-class MessagesControllerSpec
-    extends AnyWordSpec
-    with Matchers
-    with TestActorSystem
-    with MockitoSugar
-    with BeforeAndAfterEach
-    with ScalaCheckDrivenPropertyChecks {
+class MessagesControllerSpec extends AnyWordSpec with Matchers with TestActorSystem with BeforeAndAfterEach with ScalaCheckDrivenPropertyChecks {
 
   private val HTTP_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
 
@@ -330,10 +327,10 @@ class MessagesControllerSpec
       when(appConfig.clientAllowList).thenReturn(Seq("XYZ"))
       when(appConfig.internalAllowList).thenReturn(Seq.empty)
       when(appConfig.enableProxyModeGb).thenReturn(true)
-      when(mockEisConnectorProvider.gb) thenReturn mockEISConnector
+      when(mockEisConnectorProvider.gb).thenReturn(mockEISConnector)
 
       when(
-        mockEISConnector.post(any[Source[ByteString, _]])(
+        mockEISConnector.post(any[Source[ByteString, ?]])(
           any[HeaderCarrier]
         )
       )
@@ -369,7 +366,7 @@ class MessagesControllerSpec
       when(appConfig.enableProxyModeGb).thenReturn(true)
 
       when(
-        mockEISConnector.post(any[Source[ByteString, _]])(
+        mockEISConnector.post(any[Source[ByteString, ?]])(
           any[HeaderCarrier]
         )
       )
@@ -406,7 +403,7 @@ class MessagesControllerSpec
       when(appConfig.enableProxyModeXi).thenReturn(true)
 
       when(
-        mockEISConnector.post(any[Source[ByteString, _]])(
+        mockEISConnector.post(any[Source[ByteString, ?]])(
           any[HeaderCarrier]
         )
       )
@@ -439,10 +436,10 @@ class MessagesControllerSpec
       when(appConfig.internalAllowList).thenReturn(Seq.empty)
       when(appConfig.enableProxyModeGb).thenReturn(false)
       when(appConfig.enableProxyModeXi).thenReturn(true)
-      when(mockEisConnectorProvider.xi) thenReturn mockEISConnector
+      when(mockEisConnectorProvider.xi).thenReturn(mockEISConnector)
 
       when(
-        mockEISConnector.post(any[Source[ByteString, _]])(
+        mockEISConnector.post(any[Source[ByteString, ?]])(
           any[HeaderCarrier]
         )
       )
@@ -474,10 +471,10 @@ class MessagesControllerSpec
       when(appConfig.internalAllowList).thenReturn(Seq("XYZ"))
       when(appConfig.clientAllowList).thenReturn(Seq())
       when(appConfig.enableProxyModeGb).thenReturn(false)
-      when(mockEisConnectorProvider.gb) thenReturn mockEISConnector
+      when(mockEisConnectorProvider.gb).thenReturn(mockEISConnector)
 
       when(
-        mockEISConnector.post(any[Source[ByteString, _]])(
+        mockEISConnector.post(any[Source[ByteString, ?]])(
           any[HeaderCarrier]
         )
       )

@@ -79,7 +79,7 @@ class EISConnectorSpec
   // We construct the connector each time to avoid issues with the circuit breaker
   def connector = new EISConnectorImpl("eis", connectorConfig, httpClientV2, clock)
 
-  def source: Source[ByteString, _] = Source.single(ByteString.fromString("<test></test>"))
+  def source: Source[ByteString, ?] = Source.single(ByteString.fromString("<test></test>"))
 
   private lazy val correlationId  = UUID.randomUUID()
   private lazy val conversationId = UUID.randomUUID()
