@@ -18,6 +18,7 @@ package uk.gov.hmrc.transitmovementseisstub.utils
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.BeforeAndAfterEach
@@ -36,7 +37,7 @@ trait WiremockSuite extends BeforeAndAfterAll with BeforeAndAfterEach {
   this: Suite =>
   protected val wiremockPort = 11111
 
-  protected val wiremockConfig =
+  protected val wiremockConfig: WireMockConfiguration =
     wireMockConfig().dynamicPort().port(wiremockPort).notifier(new ConsoleNotifier(false))
 
   protected val server: WireMockServer = new WireMockServer(wiremockConfig)
@@ -58,7 +59,7 @@ trait WiremockSuite extends BeforeAndAfterAll with BeforeAndAfterEach {
 }
 
 trait WiremockSuiteWithGuice extends WiremockSuite {
-  this: Suite with GuiceFakeApplicationFactory =>
+  this: Suite & GuiceFakeApplicationFactory =>
 
   override def fakeApplication(): Application = appBuilder.build()
 
@@ -69,9 +70,9 @@ trait WiremockSuiteWithGuice extends WiremockSuite {
         "microservice.services.eis.xi.port"          -> server.port().toString,
         "microservice.services.ncts-monitoring.port" -> server.port().toString
       )
-      .overrides(bindings: _*)
+      .overrides(bindings*)
 
-  protected lazy val injector: Injector = fakeApplication.injector
+  protected lazy val injector: Injector = fakeApplication().injector
 
   protected def bindings: Seq[GuiceableModule] = Seq(
     bind[Metrics].toInstance(new TestMetrics),
@@ -80,13 +81,13 @@ trait WiremockSuiteWithGuice extends WiremockSuite {
 
   override def beforeAll(): Unit = {
     server.start()
-    fakeApplication
+    fakeApplication()
     super.beforeAll()
   }
 
   override def beforeEach(): Unit = {
     server.resetAll()
-    fakeApplication
+    fakeApplication()
     super.beforeEach()
   }
 

@@ -23,8 +23,9 @@ import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.MimeTypes
 import play.api.http.Status.INTERNAL_SERVER_ERROR
+import play.api.libs.ws.DefaultBodyWritables
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.http.HttpReads.Implicits._
+import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.HttpResponse
 import uk.gov.hmrc.http.StringContextOps
 import uk.gov.hmrc.http.UpstreamErrorResponse
@@ -42,7 +43,7 @@ import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 trait EISConnector {
-  def post(body: Source[ByteString, _])(implicit hc: HeaderCarrier): Future[Either[RoutingError, Unit]]
+  def post(body: Source[ByteString, ?])(implicit hc: HeaderCarrier): Future[Either[RoutingError, Unit]]
 }
 
 class EISConnectorImpl(
@@ -54,18 +55,19 @@ class EISConnectorImpl(
   ec: ExecutionContext,
   val materializer: Materializer
 ) extends EISConnector
-    with Logging {
+    with Logging
+    with DefaultBodyWritables {
 
   private val HTTP_DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH).withZone(ZoneOffset.UTC)
 
   private def nowFormatted(): String =
     s"${HTTP_DATE_FORMATTER.format(OffsetDateTime.now(clock.withZone(ZoneOffset.UTC)))} UTC"
 
-  override def post(body: Source[ByteString, _])(implicit hc: HeaderCarrier): Future[Either[RoutingError, Unit]] =
+  override def post(body: Source[ByteString, ?])(implicit hc: HeaderCarrier): Future[Either[RoutingError, Unit]] =
     httpClientV2
       .post(url"${eisInstanceConfig.url}")
       .setHeader(
-        hc.headers(Seq("X-Conversation-Id", "X-Correlation-Id")): _*
+        hc.headers(Seq("X-Conversation-Id", "X-Correlation-Id"))*
       )
       .setHeader(
         HeaderNames.AUTHORIZATION -> hc.authorization.get.value,

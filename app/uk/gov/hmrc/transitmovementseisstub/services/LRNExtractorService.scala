@@ -41,14 +41,14 @@ import scala.concurrent.Future
 
 @ImplementedBy(classOf[LRNExtractorServiceImpl])
 trait LRNExtractorService {
-  def extractLRN(source: Source[ByteString, _]): EitherT[Future, ParserError, (LocalReferenceNumber, MessageSender)]
+  def extractLRN(source: Source[ByteString, ?]): EitherT[Future, ParserError, (LocalReferenceNumber, MessageSender)]
 
 }
 
 @Singleton
 class LRNExtractorServiceImpl @Inject() (implicit mat: Materializer, ec: ExecutionContext) extends LRNExtractorService {
 
-  override def extractLRN(source: Source[ByteString, _]): EitherT[Future, ParserError, (LocalReferenceNumber, MessageSender)] =
+  override def extractLRN(source: Source[ByteString, ?]): EitherT[Future, ParserError, (LocalReferenceNumber, MessageSender)] =
     EitherT(source.runWith(lrnExtractor))
 
   private val lrnSinkShape           = Sink.head[ParseResult[LocalReferenceNumber]]

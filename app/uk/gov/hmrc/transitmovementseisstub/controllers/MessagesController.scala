@@ -72,8 +72,8 @@ class MessagesController @Inject() (
   def routeToEIScheck(client: String, customsOffice: CustomsOffice): Boolean =
     (appConfig.clientAllowList.contains(client) && customsOffice.proxyEnabled(appConfig)) || appConfig.internalAllowList.contains(client)
 
-  def post(customsOffice: CustomsOffice): Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
-    implicit request: Request[Source[ByteString, _]] =>
+  def post(customsOffice: CustomsOffice): Action[Source[ByteString, ?]] = Action.async(streamFromMemory) {
+    implicit request: Request[Source[ByteString, ?]] =>
       implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
       hc.headers(Seq("X-Client-Id")) match {
         case Seq(clientHeaderAndValue) if routeToEIScheck(clientHeaderAndValue._2, customsOffice) =>
@@ -83,12 +83,12 @@ class MessagesController @Inject() (
       }
   }
 
-  def postToStub: Action[Source[ByteString, _]] = Action.async(streamFromMemory) {
-    implicit request: Request[Source[ByteString, _]] =>
+  def postToStub: Action[Source[ByteString, ?]] = Action.async(streamFromMemory) {
+    implicit request: Request[Source[ByteString, ?]] =>
       routeToStub
   }
 
-  private def routeToStub(implicit request: Request[Source[ByteString, _]]) =
+  private def routeToStub(implicit request: Request[Source[ByteString, ?]]) =
     (for {
       _ <- validateHeader("X-Correlation-Id", isUuid)
       _ <- validateHeader("X-Conversation-Id", isUuid)
@@ -113,7 +113,7 @@ class MessagesController @Inject() (
       _ => Ok
     )
 
-  private def routeToEIS(customsOffice: CustomsOffice)(implicit request: Request[Source[ByteString, _]], hc: HeaderCarrier) = {
+  private def routeToEIS(customsOffice: CustomsOffice)(implicit request: Request[Source[ByteString, ?]], hc: HeaderCarrier) = {
     val connector = (customsOffice: @unchecked) match {
       case CustomsOffice.Gb => eisConnectorProvider.gb
       case CustomsOffice.Xi => eisConnectorProvider.xi
@@ -127,7 +127,7 @@ class MessagesController @Inject() (
   }
 
   private def validateHeader(header: String, validation: String => Option[String])(implicit
-    request: Request[Source[ByteString, _]]
+    request: Request[Source[ByteString, ?]]
   ): EitherT[Future, StubError, Unit] =
     EitherT.fromEither[Future] {
       request.headers.get(header) match {
@@ -169,7 +169,7 @@ class MessagesController @Inject() (
       case _                => Some(s"Expected date in RFC 7231 format, instead got $value")
     }
 
-  private def validateLRN(requestBody: Source[ByteString, _]): EitherT[Future, StubError, Unit] = EitherT {
+  private def validateLRN(requestBody: Source[ByteString, ?]): EitherT[Future, StubError, Unit] = EitherT {
     (for {
       lrn <- lrnExtractorService.extractLRN(requestBody)
     } yield lrn).fold(

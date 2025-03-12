@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.transitmovementseisstub.utils
 
+import izumi.reflect.Tag
 import play.api.libs.ws.BodyWritable
 import play.api.libs.ws.WSRequest
 import uk.gov.hmrc.http.HttpReads
@@ -24,22 +25,17 @@ import uk.gov.hmrc.http.client.StreamHttpReads
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import scala.reflect.runtime.universe
 
 class FakeRequestBuilder extends RequestBuilder {
-  override def transform(transform: WSRequest => WSRequest): RequestBuilder = this
-
-  override def execute[A](implicit evidence$1: HttpReads[A], ec: ExecutionContext): Future[A] = Future.failed(new RuntimeException)
-
-  override def stream[A](implicit evidence$2: StreamHttpReads[A], ec: ExecutionContext): Future[A] = Future.failed(new RuntimeException)
-
-  override def withProxy: RequestBuilder = this
+  override def execute[A: HttpReads](implicit ec: ExecutionContext): Future[A] = Future.failed(new RuntimeException)
 
   override def setHeader(header: (String, String)*): RequestBuilder = this
 
-  override def replaceHeader(header: (String, String)): RequestBuilder = this
+  override def withBody[B: BodyWritable: Tag](body: B)(implicit ec: ExecutionContext): RequestBuilder = this
 
-  override def addHeaders(headers: (String, String)*): RequestBuilder = this
+  override def transform(transform: WSRequest => WSRequest): RequestBuilder = this
 
-  override def withBody[B](body: B)(implicit evidence$3: BodyWritable[B], evidence$4: universe.TypeTag[B], ec: ExecutionContext): RequestBuilder = this
+  override def stream[A: StreamHttpReads](implicit ec: ExecutionContext): Future[A] = Future.failed(new RuntimeException)
+
+  override def withProxy: RequestBuilder = this
 }

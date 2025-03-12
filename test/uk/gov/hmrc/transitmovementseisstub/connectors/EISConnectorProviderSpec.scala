@@ -18,11 +18,15 @@ package uk.gov.hmrc.transitmovementseisstub.connectors
 
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.testkit.NoMaterializer
-import org.mockito.MockitoSugar
+import org.mockito.Mockito.reset
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
+import org.scalatestplus.mockito.MockitoSugar.mock
 import uk.gov.hmrc.http.test.HttpClientV2Support
 import uk.gov.hmrc.transitmovementseisstub.config.AppConfig
 import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
@@ -30,7 +34,7 @@ import uk.gov.hmrc.transitmovementseisstub.config.EISInstanceConfig
 import java.time.Clock
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class EISConnectorProviderSpec extends AnyFreeSpec with HttpClientV2Support with Matchers with ScalaFutures with MockitoSugar with BeforeAndAfterEach {
+class EISConnectorProviderSpec extends AnyFreeSpec with HttpClientV2Support with Matchers with ScalaFutures with BeforeAndAfterEach {
 
   implicit val materializer: Materializer = NoMaterializer
 

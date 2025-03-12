@@ -32,7 +32,7 @@ import scala.xml.NodeSeq
 
 class LRNExtractorServiceSpec extends AnyFreeSpec with ScalaFutures with Matchers with TestActorSystem with StreamTestHelpers {
 
-  implicit val defaultPatience =
+  implicit val defaultPatience: PatienceConfig =
     PatienceConfig(timeout = Span(6, Seconds))
 
   val validLRN: NodeSeq =
