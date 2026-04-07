@@ -19,7 +19,6 @@ lazy val microservice = Project(appName, file("."))
     scalacOptions += "-Wconf:msg=Flag.*repeatedly:s",
     scalacOptions += "-Xfatal-warnings"
   )
-  .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)
   .settings(inThisBuild(buildSettings))
 
