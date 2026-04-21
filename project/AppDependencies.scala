@@ -6,7 +6,7 @@ object AppDependencies {
   private val catsVersion = "2.13.0"
   private val bootstrapVersion = "10.7.0"
   private val catsRetryVersion = "4.0.0"
-  private val pekkoVersion = "1.4.0"
+  private val pekkoVersion = "1.5.0"
 
   val compile: Seq[ModuleID] = Seq(
     "uk.gov.hmrc" %% "bootstrap-backend-play-30" % bootstrapVersion,
