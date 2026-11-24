@@ -4,9 +4,9 @@ import sbt._
 object AppDependencies {
 
   private val catsVersion = "2.13.0"
-  private val bootstrapVersion = "10.7.0"
+  private val bootstrapVersion = "10.9.0"
   private val catsRetryVersion = "4.0.0"
-  private val pekkoVersion = "1.5.0"
+  private val pekkoVersion = "2.0.0"
 
   val compile: Seq[ModuleID] = Seq(
     "uk.gov.hmrc" %% "bootstrap-backend-play-30" % bootstrapVersion,
@@ -23,7 +23,7 @@ object AppDependencies {
   val test: Seq[ModuleID] = Seq(
     "uk.gov.hmrc"           %% "bootstrap-test-play-30"  % bootstrapVersion,
     "org.scalatestplus" %% "mockito-5-12"            % "3.2.19.0",
-    "org.scalacheck"    %% "scalacheck"              % "1.19.0",
+    "org.scalacheck"    %% "scalacheck"              % "1.20.0",
     "org.scalatestplus" %% "scalacheck-1-18"         % "3.2.19.0",
     "org.apache.pekko" %% "pekko-serialization-jackson" % pekkoVersion,
     "org.apache.pekko" %% "pekko-actor-typed" % pekkoVersion
